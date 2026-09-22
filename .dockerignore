@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.gitignore
+*.log
+
+# ⚠ .env.local NE DOIT PAS entrer dans l'image.
+#
+# Next le lit EN PRIORITÉ sur .env. Un .env.local de développement traînant sur
+# le serveur (NEXT_PUBLIC_BASE_PATH vide) produirait un bundle sans préfixe qui
+# démarre parfaitement et renvoie 404 sur chaque ressource derrière nginx.
+# C'est exactement ce qui est arrivé en préparant ce déploiement.
+#
+# Dans l'image, .env est donc le SEUL fichier d'environnement qui compte.
+.env.local
+.env.*.local

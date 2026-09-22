@@ -1,0 +1,504 @@
+@import "tailwindcss";
+
+/* ── Design tokens ─────────────────────────────────────────────────────────────
+   Identical to the DEP frontend's tokens. DEP and LIS are two applications of
+   the same SIH, and staff move between them in the same session — so the
+   chrome must be indistinguishable. Any change here has a twin in
+   chum-dep-frontend/src/app/globals.css. */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+
+  /* Sidebar dark gradient  (matches PHP .main-sidebar) */
+  --gradient-sidebar: linear-gradient(180deg, #0b1a2e 0%, #0f2847 60%, #0a3060 100%);
+
+  /* Navbar / brand gradient  (matches PHP .navbar + .brand-link) */
+  --gradient-brand: linear-gradient(135deg, #0b1a2e 0%, #0f2847 60%, #0891b2 100%);
+
+  /* Application background behind the cards. */
+  --app-bg: #f0f2f5;
+
+  /* Solid navy of table headers — the opaque end of --gradient-brand. */
+  --header-navy: #0f2847;
+}
+
+/* ── Tailwind theme ────────────────────────────────────────────────────────── */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: "Poppins", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+/* ── Base ──────────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: "Poppins", "Segoe UI", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Hide scrollbars (scroll still works) ──────────────────────────────────── */
+.no-scrollbar,
+.no-scrollbar * {
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* legacy Edge / IE */
+}
+.no-scrollbar::-webkit-scrollbar,
+.no-scrollbar *::-webkit-scrollbar {
+  display: none;                /* Chrome / Safari / new Edge */
+}
+
+/* ── Always-visible scrollbar ─────────────────────────────────────────────────
+   The opposite of .no-scrollbar, for a pane whose scrollability must be
+   obvious rather than discovered. Overlay scrollbars (macOS, and Chrome's
+   newer behaviour) stay hidden until you scroll, which makes a fixed-height
+   list look like a complete list — so the track is painted permanently.
+
+   Pair with `overflow-y: scroll`, not `auto`: `auto` removes the track
+   entirely when the content happens to fit, and the pane would then jump
+   sideways by the scrollbar's width as items are added. */
+.scroll-visible {
+  scrollbar-width: thin;                              /* Firefox */
+  scrollbar-color: #cbd5e1 #f1f5f9;                   /* thumb, track */
+  scrollbar-gutter: stable;
+}
+.scroll-visible::-webkit-scrollbar {
+  width: 10px;
+}
+.scroll-visible::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 9999px;
+}
+.scroll-visible::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border: 2px solid #f1f5f9;    /* insets the thumb inside the track */
+  border-radius: 9999px;
+}
+.scroll-visible::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ── Print: isolate the active ticket ─────────────────────────────────────────
+   Tickets (rendez-vous, demande) are rendered inside the normal page — so they
+   stay React components with real data — and everything else is hidden at print
+   time. `visibility` rather than `display` keeps the layout intact, which avoids
+   the reflow that makes `display:none` printing drop the first page.
+
+   One shared id, so a new ticket type needs no new CSS. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #print-ticket,
+  #print-ticket * {
+    visibility: visible;
+  }
+  #print-ticket {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+  }
+
+  /* A tube label split down the middle by a page break is waste, not paper. */
+  .print-label {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA FEUILLE IMPRIMÉE — géométrie reprise telle quelle de magasin-migration,
+   qui la tenait elle-même du PrintTemplate de la DEP.
+
+   Copiée et non réinventée, à dessein : les agents classent dans le MÊME
+   dossier une fiche d'article, un bon de sortie et un compte rendu. Une
+   fiche qui ne ressemblerait pas aux deux autres passerait pour le document
+   d'un autre établissement.
+
+   Les classes .bon-* gardent leur nom d'origine bien qu'il ne s'agisse plus
+   d'un « bon » : les renommer ferait diverger trois copies qu'on veut
+   pouvoir comparer d'un coup d'œil.
+   ══════════════════════════════════════════════════════════════════════════ */
+/* ── Le bon imprimé ───────────────────────────────────────────────────────
+   Geometry copied from the DEP's PrintTemplate: a 210×297mm sheet with a 12mm
+   margin all round, sans-serif at 12px. The three applications file their
+   paperwork in the same drawer, so a bon has to look like it came from the same
+   institution as a consultation document.
+
+   The margin lives on the SHEET, not only in @page: the same markup is shown
+   on screen in the preview, where @page does not apply, and a preview whose
+   text ran to the paper's edge would be a preview of the wrong thing. */
+.bon-feuille {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 12mm;
+  background: #fff;
+  color: #000;
+  font-family: var(--font-poppins), system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  box-sizing: border-box;
+}
+
+.bon-entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.bon-entete-cote { flex: 0 0 80px; }
+.bon-entete-centre { flex: 1; text-align: center; padding-top: 4px; }
+
+.bon-logo { width: 80px; height: 80px; object-fit: contain; display: block; }
+.bon-qr { width: 80px; height: 80px; object-fit: contain; display: block; }
+.bon-qr-vide { border: 1px dashed #cbd5e1; }
+
+.bon-republique {
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+/* The Arabic line is not uppercased — the transform does nothing to the script
+   and only risks the browser reshaping it. */
+.bon-republique[dir="rtl"] { text-transform: none; font-size: 13px; }
+
+.bon-service { font-size: 12px; }
+
+.bon-titre {
+  margin-top: 12px;
+  font-size: 20px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.bon-reperes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid #cbd5e1;
+  font-size: 12px;
+}
+.bon-ancien { color: #64748b; font-weight: 400; }
+
+/* Who the bon concerns, facing what it was issued against. */
+.bon-parties {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 14px;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.bon-partie { flex: 1 1 0; min-width: 0; }
+.bon-partie-droite { text-align: right; }
+.bon-partie-titre {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #475569;
+}
+.bon-partie-nom { font-size: 13px; font-weight: 700; }
+.bon-champ-label { font-weight: 600; }
+
+.bon-corps { margin-bottom: 24px; }
+
+.bon-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.bon-table th,
+.bon-table td {
+  border: 1px solid #94a3b8;
+  padding: 5px 6px;
+  vertical-align: top;
+}
+.bon-table thead th {
+  background: #f1f5f9;
+  font-weight: 700;
+  text-align: left;
+  white-space: nowrap;
+}
+.bon-table .bon-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bon-table thead .bon-num { text-align: right; }
+.bon-table .bon-centre { text-align: center; }
+.bon-table thead .bon-centre { text-align: center; }
+.bon-table .bon-ref { white-space: nowrap; font-weight: 600; }
+.bon-table .bon-vide { text-align: center; font-style: italic; padding: 16px; color: #475569; }
+
+/* The cells under the first columns carry no rules, so the totals read as a box
+   hanging off the table's right edge rather than as more data rows. */
+.bon-table .bon-sans-bord { border: 0; }
+.bon-table .bon-total-libelle { font-weight: 700; background: #f8fafc; }
+.bon-table .bon-total-fort .bon-total-libelle { background: #e2e8f0; font-size: 12px; }
+
+.bon-table-entree th:nth-child(2),
+.bon-table-entree td:nth-child(2) { width: 24%; }
+.bon-table-sortie { font-size: 12px; }
+.bon-table-sortie th,
+.bon-table-sortie td { padding: 7px 8px; }
+.bon-table-sortie th:first-child,
+.bon-table-sortie td:first-child { width: 16%; }
+.bon-table-sortie th:nth-child(3),
+.bon-table-sortie td:nth-child(3) { width: 14%; }
+.bon-table-sortie th:last-child,
+.bon-table-sortie td:last-child { width: 14%; }
+
+/* Un rapport groupé par dépôt : chaque bloc porte son propre tableau, parce
+   qu'un solde courant n'a de sens qu'à l'intérieur du dépôt où il est compté. */
+.bon-bloc-depot { margin-bottom: 16px; }
+.bon-bloc-depot-titre {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+.bon-bloc-depot-initial { font-weight: 400; font-size: 11px; color: #475569; }
+
+.bon-vide-bloc {
+  padding: 20px;
+  text-align: center;
+  font-style: italic;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+}
+
+/* Sept colonnes : la désignation prend ce qui reste. */
+.bon-table-famille th:nth-child(2),
+.bon-table-famille td:nth-child(2) { width: 30%; }
+
+.bon-signatures {
+  display: flex;
+  justify-content: space-between;
+  gap: 40px;
+  margin-top: 40px;
+}
+.bon-signature { flex: 0 0 40%; text-align: center; }
+.bon-signature-libelle { font-weight: 600; font-size: 12px; }
+.bon-signature-ligne { border-bottom: 1px solid #000; height: 44px; }
+
+/* The fiche's grouped headers are centred, as on the paper form. */
+.print-fiche-table thead th { text-align: center; }
+.print-mvt-table thead th { text-align: center; }
+.print-mvt-table .pr-mois { width: 40%; }
+
+/* The sheet already carries its own 12mm padding, so @page adds none: two
+   margins stacked would push a 9-column table off the paper. */
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+@media print {
+  /* The screen preview needs the sheet to look like paper; the printer does
+     not, and a shadow costs toner. */
+  .bon-feuille { margin: 0; box-shadow: none; }
+  .bon-table thead { display: table-header-group; }
+  .bon-table tr { break-inside: avoid; page-break-inside: avoid; }
+  .bon-table tfoot { break-inside: avoid; page-break-inside: avoid; }
+  /* Signatures never orphan onto a sheet of their own. */
+  .bon-signatures { break-inside: avoid; page-break-inside: avoid; }
+  /* A dépôt's heading must not be left at the foot of a page alone. */
+  .bon-bloc-depot-titre { break-after: avoid; page-break-after: avoid; }
+  /* Backgrounds are part of how the header row and the totals read. */
+  .bon-table thead th,
+  .bon-table .bon-total-libelle,
+  .bon-parties {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  /* One report per sheet, and the header repeats when a long fiche spills. */
+  .print-page { padding: 0; }
+  /* A bon whose lines spill must not leave its signatures orphaned on a sheet
+     of their own, nor split the totals off the lines they total. */
+  .print-bon-signatures { break-inside: avoid; page-break-inside: avoid; }
+  .print-table-bordee tfoot { break-inside: avoid; page-break-inside: avoid; }
+  .print-depot { break-inside: auto; }
+  .print-table-bordee thead { display: table-header-group; }
+  .print-table-bordee tr { break-inside: avoid; }
+}
+
+/* ── L'étiquette d'un bien ─────────────────────────────────────────────────
+   Deux dispositions, une par orientation de format. Les DIMENSIONS ne sont pas
+   ici : elles viennent du format choisi et sont posées en style inline par le
+   composant — une taille figée dans la feuille de style ne saurait pas suivre
+   le support que le service a en stock. */
+.etiq {
+  box-sizing: border-box;
+  background: #fff;
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  overflow: hidden;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* ── Portrait : le gabarit du parc ──────────────────────────────────────── */
+.etiq-portrait {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5mm 1mm;
+}
+
+/* L'emplacement du texte tourné. `overflow: hidden` le borne : une désignation
+   à rallonge doit être coupée, pas déborder sur l'écusson. */
+.etiq-p-texte {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Le bloc tourné lui-même. Sa largeur propre est la HAUTEUR de l'emplacement :
+   après la rotation, c'est elle qu'on voit verticalement. */
+.etiq-p-rot {
+  transform: rotate(-90deg);
+  flex: 0 0 auto;
+  text-align: left;
+}
+
+/* ── Paysage : la même information à plat ───────────────────────────────── */
+.etiq-paysage {
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+}
+
+.etiq-texte {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+
+.etiq-visuels {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Le contenu, commun aux deux ────────────────────────────────────────── */
+.etiq-lib {
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  /* Deux lignes au plus : une désignation à rallonge ne doit pas chasser le
+     numéro hors de l'étiquette. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.etiq-champs {
+  line-height: 1.35;
+  margin-top: 0.6mm;
+}
+
+.etiq-champs > div {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Le numéro d'inventaire : ce qui reste lisible quand le QR ne l'est plus. Une
+   étiquette vit des années, frottée et lavée ; un QR abîmé ne se lit plus du
+   tout, un numéro imprimé reste déchiffrable même amputé. */
+.etiq-art {
+  font-weight: 700;
+}
+
+.etiq-service {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-top: 0.6mm;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* En portrait, le service a le droit à deux lignes. Tronqué, il donnait
+   « GYNECOLOGIE OBSTETR… » — or c'est justement le champ qu'on lit pour savoir
+   à quelle entité le bien appartient : à moitié, il ne sert plus à rien. */
+.etiq-portrait .etiq-service {
+  white-space: normal;
+  line-height: 1.1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.etiq img {
+  display: block;
+  /* Pas de lissage entre les modules du QR : des bords flous font décrocher
+     les lecteurs bon marché. */
+  image-rendering: pixelated;
+}
+
+.etiq-logo {
+  object-fit: contain;
+  image-rendering: auto;
+}
+
+.etiq-qr-vide {
+  display: block;
+  background: #f1f5f9;
+}
+
+/* ── Une étiquette par page ────────────────────────────────────────────────
+   À l'écran elles s'empilent avec un peu d'air pour qu'on les compare. À
+   l'impression, chacune occupe sa page — dont la taille est celle de
+   l'étiquette, posée en @page par le composant. */
+.etiq-suite {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4mm;
+}
+
+.etiq-page {
+  background: #fff;
+  /* Le liseré n'existe qu'à l'écran : il montre les bords du support. Sur le
+     ruban, l'étiquette EST le bord. */
+  outline: 0.3mm dashed #cbd5e1;
+}
+
+@media print {
+  .etiq-suite { display: block; gap: 0; }
+  .etiq-page {
+    outline: none;
+    break-after: page;
+    page-break-after: always;
+  }
+  .etiq-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+}

@@ -1,0 +1,77 @@
+# CHUM INVENTAIRE frontend — image de production.
+#
+# ⚠ ATTENTION AUX VARIABLES NEXT_PUBLIC_*
+# Next les INLINE dans le bundle au moment du `build`. Elles ne peuvent donc pas
+# être changées au démarrage du conteneur : une image construite avec
+# NEXT_PUBLIC_BASE_PATH vide servira l'application à la racine quoi qu'on mette
+# dans le .env au démarrage, et toutes les URL seront fausses derrière nginx.
+#
+# Elles sont lues depuis le .env du dépôt, que Next charge de lui-même au
+# `build`. Le .env doit donc être en place AVANT le build — et .dockerignore ne
+# l'exclut surtout pas. Toute la configuration reste ainsi dans un seul fichier
+# par dépôt, jamais dans le compose.
+#
+# Conséquence pratique : changer /inv ou /inv-api impose un
+# `docker compose build`, jamais un simple `restart`.
+FROM node:20-slim AS deps
+WORKDIR /app
+COPY package*.json ./
+# Un `npm ci` qui sort en 0 sur un node_modules incomplet est déjà arrivé sur le
+# magasin (couche de cache BuildKit empoisonnée) : next était installé sans son
+# dist/, et la panne ne se voyait que 80 s plus tard, à `next build`, sous la
+# forme « next: not found ». Le garde-fou la fait tomber à l'étape qui la cause.
+RUN npm ci && test -x node_modules/.bin/next
+
+FROM node:20-slim AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# Un .env absent produirait un bundle silencieusement faux — basePath vide,
+# appels API à la racine — qui ne se verrait qu'en ouvrant l'application derrière
+# nginx. Mieux vaut échouer ici.
+RUN test -f .env
+
+RUN npm run build
+
+# ⚠ LE GARDE-FOU QUI COMPTE : le bundle porte-t-il VRAIMENT le préfixe ?
+#
+# `test -f .env` ci-dessus ne prouve que l'existence du fichier. Or Next lit
+# .env.local EN PRIORITÉ sur .env : un .env.local traînant dans le contexte de
+# build (NEXT_PUBLIC_BASE_PATH vide) produit un bundle SANS préfixe qui démarre
+# parfaitement et renvoie 404 sur tout derrière nginx. C'est arrivé en
+# préparant ce déploiement, et rien ne le signalait.
+#
+# .dockerignore exclut désormais .env.local, mais une exclusion se contourne
+# par accident. On VÉRIFIE donc le résultat au lieu de faire confiance à
+# l'entrée : basePath compilé doit être exactement celui demandé.
+RUN node -e "\
+  const fs=require('fs');\
+  const attendu=(fs.readFileSync('.env','utf8').match(/^NEXT_PUBLIC_BASE_PATH=(.*)$/m)||[,''])[1].trim();\
+  const obtenu=require('./.next/required-server-files.json').config.basePath||'';\
+  if(attendu!==obtenu){\
+    console.error('BUILD REFUSE : basePath compile = ' + JSON.stringify(obtenu) + ', attendu ' + JSON.stringify(attendu));\
+    console.error('Un .env.local a-t-il ete copie dans le contexte de build ?');\
+    process.exit(1);\
+  }\
+  console.log('basePath compile : ' + JSON.stringify(obtenu) + ' — conforme au .env');"
+
+FROM node:20-slim AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=3003
+ENV HOSTNAME=0.0.0.0
+
+# `output: "standalone"` dans next.config : Next n'embarque que les fichiers
+# réellement importés. L'image n'a donc pas besoin de node_modules.
+#
+# `public/` porte l'écusson du CHU (chu_logo_new.png) : sans lui, les fiches et
+# les étiquettes sortent sans logo.
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+USER node
+
+EXPOSE 3003
+CMD ["node", "server.js"]
