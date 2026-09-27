@@ -47,7 +47,10 @@ export const LANDING_ORDER: ReadonlyArray<{
   // atterrit quand même.
   { path: "/statistiques", access: ACCESS.STATISTIQUES_VOIR },
   { path: "/impression", access: ACCESS.IMPRESSION_VOIR },
-  { path: "/configuration", access: ACCESS.CONFIG_STRUCTURE_VOIR },
+  // PLUS de /configuration ici : la page est reservee au role 100, et un compte
+  // qui n'a que config.structure.voir y serait accueilli par un refus. Une
+  // page d'atterrissage qui rejette est pire que pas d'atterrissage du tout —
+  // /mon-compte, le dernier recours, explique au moins ce qui manque.
 ];
 
 /**

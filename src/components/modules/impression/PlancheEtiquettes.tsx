@@ -8,20 +8,20 @@ import { FORMAT_PAR_DEFAUT, type FormatEtiquette } from "@/lib/inv/formats-etiqu
 /**
  * LES ÉTIQUETTES À IMPRIMER — UNE PAR PAGE.
  *
+ * Le SEUL rendu de l'étiquette dans l'application : la page Articles imprime
+ * par ici elle aussi, avec un lot d'un seul article. Il y a eu un temps deux
+ * implémentations — l'une posait l'étiquette dans `.etiq-page` avec son
+ * `@page`, l'autre la rendait nue — et les deux écrans ne sortaient pas la
+ * même forme. Deux rendus du même autocollant finissent toujours par diverger.
+ *
  * ── LE FORMAT DE PAGE EST CELUI DE L'ÉTIQUETTE ──────────────────────────────
- * `@page { size: 80mm 35mm; margin: 0 }`, injecté selon le format choisi. C'est
- * ce qui fait qu'une étiqueteuse avance d'exactement une étiquette : elle
- * imprime des PAGES, et si la page fait A4 elle déroule une A4 de ruban pour
- * une vignette de 8 cm.
+ * `@page { size: 40mm 90mm; margin: 0 }`. C'est ce qui fait qu'une étiqueteuse
+ * avance d'exactement une étiquette : elle imprime des PAGES, et si la page
+ * fait A4 elle déroule une A4 de ruban pour une vignette de 9 cm.
  *
- * La règle est écrite ici, dans le composant, et non dans globals.css : la
- * taille dépend de ce que l'utilisateur vient de choisir, et une feuille de
- * style statique ne sait pas la porter.
- *
- * ── ET NON UNE PLANCHE DE DIX ───────────────────────────────────────────────
- * La version précédente en posait dix sur une A4. C'était faux pour le matériel
- * du service : les étiquettes se posent une par une, sur du ruban, et ce qui a
- * été mesuré sur le parc fait 80 × 35 mm.
+ * La règle est écrite ici, dans le composant, et non dans globals.css : une
+ * feuille de style statique ne saurait pas la porter si un second support
+ * apparaissait.
  */
 export default function PlancheEtiquettes({
   etiquettes, format = FORMAT_PAR_DEFAUT, onPret,
@@ -30,7 +30,7 @@ export default function PlancheEtiquettes({
   format?: FormatEtiquette;
   onPret?: (pret: boolean) => void;
 }) {
-  const { pret, logo, qrs } = useEtiquettes(etiquettes.map((e) => e.num_inventaire));
+  const { pret, qrs } = useEtiquettes(etiquettes.map((e) => e.num_inventaire));
 
   // Remonter l'état au parent sans le faire pendant le rendu.
   if (onPret) queueMicrotask(() => onPret(pret));
@@ -48,7 +48,6 @@ export default function PlancheEtiquettes({
             <EtiquetteArticle
               article={e}
               format={format}
-              logo={logo}
               qr={qrs[e.num_inventaire]}
             />
           </div>

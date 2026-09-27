@@ -18,6 +18,7 @@ export interface ArticleRow {
   presence_code: string | null;
   presence: string | null;
   marque: string | null;
+  modele: string | null;
   num_serie: string | null;
   valeur: string;
   date_inventaire: string | null;
@@ -123,6 +124,17 @@ export interface ArticleStats {
   presence_non_verifiee: number;
   valeur_totale: string;
   localisations: number;
+  services: number;
+  categories: number;
+  familles: number;
+  sous_familles: number;
+  /** Compteurs de mouvements, sous le meme perimetre que le reste. */
+  mouvements: {
+    transferts: number;
+    reformes: number;
+    propositions: number;
+    creations: number;
+  };
   par_statut: StatutCompteur[];
   par_categorie: Array<{ libelle: string | null; n: string }>;
 }
@@ -143,6 +155,7 @@ export interface ArticleQuery {
   presence?: string;
   categorie?: number;
   famille?: number;
+  sous_famille?: number;
   localisation?: number;
   service?: number;
   /** 'oui' = seulement le registre, 'non' = seulement le physique. */

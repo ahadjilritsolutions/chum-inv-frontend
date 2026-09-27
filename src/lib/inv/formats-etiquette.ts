@@ -1,27 +1,28 @@
 /**
- * LES FORMATS D'ÉTIQUETTE.
+ * LE FORMAT DE L'ÉTIQUETTE — UN SEUL, 90 × 40 mm, EN PAYSAGE.
  *
- * ── DEUX DISPOSITIONS, PAS SEULEMENT DEUX TAILLES ───────────────────────────
+ * ── C'EST LE ROULEAU QUI COMMANDE, PAS LE DESSIN ────────────────────────────
+ * L'étiquette a d'abord été dessinée en PORTRAIT (40 large × 90 haut), sur la
+ * lecture d'un exemplaire décollé d'un téléphone. La première impression réelle
+ * sur la Godex G300 a tranché autrement : le support avance dans le sens de la
+ * longueur, 90 mm de large sur 40 mm de haut, et un gabarit portrait envoyé sur
+ * ce rouleau sort tourné et coupé.
  *
- * PORTRAIT — l'étiquette réellement posée sur le parc : haute et étroite, le
- *   texte tourné à 90°, l'écusson au milieu, un grand QR en bas. C'est ce que
- *   montre le gabarit de l'étiqueteuse (40 × 90 mm) et ce qu'on lit sur un
- *   exemplaire décollé d'un téléphone. Le texte est tourné parce qu'une
- *   désignation comme « TELEPHONE-ANALOGIQUE » ne tient pas en travers de
- *   40 mm : dans le sens de la longueur, elle tient sur une ligne.
+ * Une étiqueteuse thermique ne « met pas en page » : elle déroule une longueur
+ * de ruban et imprime dessus. La géométrie du document DOIT donc être celle du
+ * consommable, au millimètre — c'est la seule dimension de tout ce module qui
+ * ne se discute pas, parce qu'elle est physique.
  *
- * PAYSAGE — la même information à plat, pour qui imprime sur des planches
- *   larges plutôt que sur du ruban.
+ * ── POURQUOI LA TAILLE N'EST PLUS DEMANDÉE ──────────────────────────────────
+ * Elle l'a été un temps, sur l'idée qu'un service puisse acheter un autre
+ * support. Dans les faits il n'y en a qu'un, et poser la question à chaque
+ * impression revenait à faire choisir entre une bonne réponse et trois
+ * mauvaises — dont une qui sort des étiquettes inutilisables sur le rouleau en
+ * stock.
  *
- * La disposition suit le FORMAT et n'est pas une option séparée : un texte
- * tourné sur une étiquette large serait illisible, et un texte à plat sur
- * 40 mm de large tiendrait sur trois lignes coupées.
- *
- * ── POURQUOI ON DEMANDE LA TAILLE ───────────────────────────────────────────
- * Une étiquette sort sur un support ACHETÉ — rouleau d'étiqueteuse, planche
- * prédécoupée. Le service qui imprime sait ce qu'il a en stock ; l'application
- * ne peut pas le deviner, et imposer une taille garantit qu'au prochain
- * changement de stock plus rien ne tombe sur les découpes.
+ * La CONSTANTE reste : la géométrie du composant s'exprime en parts de
+ * `largeur`/`hauteur`, et le jour où un second support existera vraiment il
+ * suffira d'ajouter une entrée — pas de redécouper l'étiquette.
  */
 
 export type OrientationEtiquette = "portrait" | "paysage";
@@ -33,48 +34,18 @@ export interface FormatEtiquette {
   largeur: number;
   hauteur: number;
   orientation: OrientationEtiquette;
-  detail?: string;
 }
 
-export const FORMATS_ETIQUETTE: readonly FormatEtiquette[] = [
-  {
-    cle: "40x90",
-    libelle: "40 × 90 mm",
-    largeur: 40,
-    hauteur: 90,
-    orientation: "portrait",
-    detail: "Le format des étiquettes posées sur le parc — texte tourné, grand QR",
-  },
-  {
-    cle: "30x70",
-    libelle: "30 × 70 mm",
-    largeur: 30,
-    hauteur: 70,
-    orientation: "portrait",
-    detail: "Même disposition, pour le petit matériel",
-  },
-  {
-    cle: "80x35",
-    libelle: "80 × 35 mm",
-    largeur: 80,
-    hauteur: 35,
-    orientation: "paysage",
-    detail: "À plat — texte à gauche, QR à droite",
-  },
-  {
-    cle: "100x50",
-    libelle: "100 × 50 mm",
-    largeur: 100,
-    hauteur: 50,
-    orientation: "paysage",
-    detail: "À plat, plus lisible à distance",
-  },
-];
+export const FORMAT_ETIQUETTE: FormatEtiquette = {
+  cle: "90x40",
+  libelle: "90 × 40 mm",
+  largeur: 90,
+  hauteur: 40,
+  orientation: "paysage",
+};
 
-export const FORMAT_PAR_DEFAUT = FORMATS_ETIQUETTE[0];
-
-export const formatParCle = (cle: string): FormatEtiquette =>
-  FORMATS_ETIQUETTE.find((f) => f.cle === cle) ?? FORMAT_PAR_DEFAUT;
+/** Conservé sous son ancien nom : c'est le format, et il est par défaut. */
+export const FORMAT_PAR_DEFAUT = FORMAT_ETIQUETTE;
 
 /**
  * L'échelle typographique d'un format.
@@ -85,4 +56,4 @@ export const formatParCle = (cle: string): FormatEtiquette =>
  * que c'est donc la largeur de l'étiquette qui limite le nombre de lignes.
  */
 export const echelle = (f: FormatEtiquette): number =>
-  f.orientation === "portrait" ? f.largeur / 40 : f.hauteur / 35;
+  f.orientation === "portrait" ? f.largeur / 40 : f.hauteur / 40;

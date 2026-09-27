@@ -380,13 +380,20 @@ body {
   text-align: left;
 }
 
-/* ── Paysage : la même information à plat ───────────────────────────────── */
+/* ── Paysage : le gabarit du rouleau (90 x 40) ──────────────────────────────
+   Le texte a plat a gauche, le QR a droite. C'est la disposition que le
+   consommable impose : la Godex G300 deroule 90 mm de large sur 40 mm de haut,
+   et un gabarit portrait envoye dessus sort tourne et coupe. */
 .etiq-paysage {
   display: flex;
   align-items: center;
   gap: 2mm;
 }
 
+/* Le bloc de texte prend ce que le QR laisse. `min-width: 0` est ce qui permet
+   a une designation a rallonge d'etre COUPEE plutot que de pousser le QR hors
+   de l'etiquette : sans lui, un enfant flex refuse de descendre sous la largeur
+   de son contenu. */
 .etiq-texte {
   flex: 1;
   min-width: 0;
@@ -399,7 +406,6 @@ body {
 .etiq-visuels {
   flex: 0 0 auto;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
 }
@@ -462,11 +468,6 @@ body {
   image-rendering: pixelated;
 }
 
-.etiq-logo {
-  object-fit: contain;
-  image-rendering: auto;
-}
-
 .etiq-qr-vide {
   display: block;
   background: #f1f5f9;
@@ -477,10 +478,17 @@ body {
    l'impression, chacune occupe sa page — dont la taille est celle de
    l'étiquette, posée en @page par le composant. */
 .etiq-suite {
+  /* A L ECRAN : en ligne, et on revient a la ligne. Empilees en colonne,
+     trente vignettes de 90 mm faisaient trois metres de haut et l apercu ne
+     montrait jamais que la premiere. Rangees cote a cote, la meme selection
+     tient dans la hauteur d un ecran et se relit d un coup d oeil.
+     A l impression, .etiq-page reprend la main : une etiquette par page. */
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4mm;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 3mm;
 }
 
 .etiq-page {

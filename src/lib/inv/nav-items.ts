@@ -14,6 +14,16 @@ export interface NavItem {
   iconBg: string;
   /** Access required to see this entry. Absent = any signed-in session. */
   access?: AccessCode;
+  /**
+   * Reservee au role santeplus 100 (Admin), en PLUS de son droit d'acces.
+   *
+   * Le droit seul ne suffisait pas : six des sept inv_roles portent au moins un
+   * code config.*, donc l'entree s'affichait pour presque tout le monde alors
+   * que la page regle les comptes, les roles et les referentiels. On y entre
+   * desormais parce qu'on est administrateur, pas parce qu'on a herite d'une
+   * case a cocher.
+   */
+  adminSeul?: boolean;
   children?: NavItem[];
 }
 
@@ -67,7 +77,7 @@ export const navItems: readonly NavItem[] = [
     label: "Configuration", href: "/configuration", icon: Settings,
     // Le droit le plus large des quatre onglets : la page s''ouvre dès qu''un
     // seul est permis, et gérer les comptes n''oblige pas à gérer les locaux.
-    ...palette.amber, access: ACCESS.CONFIG_COMPTES_VOIR,
+    ...palette.amber, access: ACCESS.CONFIG_COMPTES_VOIR, adminSeul: true,
   },
 ];
 
@@ -80,8 +90,12 @@ export const navItems: readonly NavItem[] = [
  */
 export function visibleNavItems(
   can: (...codes: AccessCode[]) => boolean,
+  estAdmin = false,
 ): NavItem[] {
-  return navItems.filter((i) => i.access === undefined || can(i.access));
+  return navItems.filter(
+    (i) =>
+      (i.access === undefined || can(i.access)) && (!i.adminSeul || estAdmin),
+  );
 }
 
 /** External help portal, pinned above the logout row (as in the DEP). */

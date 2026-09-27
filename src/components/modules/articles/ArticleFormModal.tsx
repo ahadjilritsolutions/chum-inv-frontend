@@ -79,6 +79,11 @@ export default function ArticleFormModal({
             marque: a.marque, modele: a.modele, num_serie: a.num_serie,
             valeur: a.valeur, date_inventaire: a.date_inventaire,
             date_mise_service: a.date_mise_service, num_facture: a.num_facture,
+            // type_observation n'a plus de champ : ses quatre valeurs (don,
+            // personnel, non disponible, autre) ne voulaient rien dire pour un
+            // bien d'inventaire. Il reste TRANSPORTE tel quel pour ne pas
+            // effacer, a la premiere modification, ce que le legacy avait pu y
+            // mettre sur 2 932 articles.
             type_observation: a.type_observation, observation: a.observation,
           });
         })
@@ -437,19 +442,6 @@ export default function ArticleFormModal({
                 />
               </Champ>
 
-              <Champ label="Type d'observation">
-                <select
-                  value={String(f.type_observation ?? "")}
-                  onChange={(e) => set("type_observation", e.target.value || null)}
-                  className={input}
-                >
-                  <option value="">—</option>
-                  <option value="don">Don</option>
-                  <option value="personnel">Personnel</option>
-                  <option value="non_disponible">Non disponible</option>
-                  <option value="autre">Autre</option>
-                </select>
-              </Champ>
               <Champ label="Observation">
                 <input
                   value={String(f.observation ?? "")}

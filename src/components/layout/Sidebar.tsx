@@ -188,6 +188,9 @@ export default function Sidebar({ user, isOpen = false, onClose }: SidebarProps)
   // someone else keeps the admin.* codes, so Administration — the way back to
   // their own role — never vanishes from under them.
   const { can } = useAccess();
+  // Le role REELLEMENT detenu : un administrateur qui simule un role etroit
+  // garde le chemin du retour, comme pour admin.voir.
+  const estAdmin = user?.real_role === 100;
 
   async function handleLogout() {
     // End it on the server FIRST: the local wipe only hides the token, while
@@ -222,7 +225,7 @@ export default function Sidebar({ user, isOpen = false, onClose }: SidebarProps)
       >
         <nav>
           <ul className="list-none m-0 p-0 flex flex-col">
-            {visibleNavItems(can).map((item) => (
+            {visibleNavItems(can, estAdmin).map((item) => (
               <NavNode key={item.label} item={item} onClose={onClose} />
             ))}
 

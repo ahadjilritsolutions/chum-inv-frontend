@@ -73,8 +73,21 @@ export default function ListToolbar({
 
   return (
     <div className="rounded-2xl bg-white p-3 shadow-sm sm:p-4">
-      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-        <div className="relative min-w-0 flex-1 sm:min-w-[260px]">
+      {/* ── TROIS RANGÉES SUR MOBILE, UNE SEULE BARRE À PARTIR DE `sm` ──────
+          Sur un téléphone, la recherche prend sa propre ligne : partagée avec
+          un premier filtre, elle tombait sous les 80 px et la liste déroulante
+          venait se poser par-dessus.
+
+          Les filtres passent ensuite dans leur propre rangée, chacun prenant
+          une part égale de la largeur — deux par ligne — au lieu de garder la
+          largeur de leur contenu et de déborder.
+
+          `sm:contents` fait DISPARAÎTRE ces deux conteneurs de la mise en page
+          à partir de `sm` : leurs enfants remontent dans la barre et
+          retrouvent exactement la disposition d'avant. Aucun écran large ne
+          bouge. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+        <div className="relative w-full min-w-0 sm:w-auto sm:flex-1 sm:min-w-[240px]">
           <Search
             size={15}
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -105,7 +118,20 @@ export default function ListToolbar({
           )}
         </div>
 
-        {filters}
+        {filters && (
+          <div
+            className={cn(
+              "flex w-full flex-wrap items-center gap-2 sm:contents",
+              // Sous `sm` uniquement : chaque filtre prend une part égale de la
+              // rangée. Les `min-w-[150px]` posés par les pages restent le
+              // plancher, donc on obtient deux filtres par ligne sur un
+              // téléphone et non une colonne de largeurs dépareillées.
+              "max-sm:[&>*]:min-w-[140px] max-sm:[&>*]:flex-1",
+            )}
+          >
+            {filters}
+          </div>
+        )}
 
         {total !== undefined && (
           <span className="hidden text-xs text-slate-400 sm:inline">
@@ -114,13 +140,16 @@ export default function ListToolbar({
         )}
 
         {(actions || onAdd) && (
-          <div className="ml-auto flex shrink-0 flex-wrap items-center gap-2">
+          /* PAS de `shrink-0` ici : c'est lui qui débordait. Un bloc de trois
+             boutons large de 403 px refusait de rétrécir dans un écran de
+             300 px, et poussait toute la page en défilement horizontal. */
+          <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
             {actions}
             {onAdd && (
               <button
                 type="button"
                 onClick={onAdd}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-cyan-600 px-3.5 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-cyan-700"
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-cyan-600 px-3.5 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-cyan-700 sm:flex-none sm:shrink-0"
               >
                 <Plus size={15} />
                 {addLabel}

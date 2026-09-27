@@ -27,6 +27,22 @@ import { cn } from "@/lib/utils";
  *
  * Un onglet n'apparaît que si la session peut en faire quelque chose : la
  * barre montre ce qu'on peut ouvrir, pas ce qui existe.
+ *
+ * ── RÉSERVÉE À L'ADMINISTRATEUR (rôle santeplus 100) ────────────────────────
+ * Les codes config.* seuls ne suffisaient pas à fermer cette page : SIX des
+ * sept inv_roles en portent au moins un — ne serait-ce que
+ * config.annuaire.voir — si bien que presque toute la maison voyait l'entrée
+ * « Configuration » et pouvait ouvrir l'écran. Or on y crée des comptes, on y
+ * distribue des rôles et on y modifie les référentiels sur lesquels tout le
+ * reste est bâti.
+ *
+ * Le contrôle porte sur `real_role`, le rôle RÉELLEMENT détenu, et non sur le
+ * rôle simulé : un administrateur qui travaille sous « Chef de service » pour
+ * vérifier ce que voit un chef ne doit pas se retrouver enfermé dehors. C'est
+ * la même règle que pour admin.voir.
+ *
+ * La garde est ici, sur la PAGE, et pas seulement dans la barre latérale :
+ * cacher une entrée de menu ne ferme pas une URL.
  */
 
 type Cle = "comptes" | "roles" | "catalogue" | "localisations";
@@ -52,12 +68,30 @@ export default function ConfigurationPage() {
     ACCESS.CONFIG_CATALOGUE_VOIR,
     ACCESS.CONFIG_STRUCTURE_VOIR,
   );
-  const { can } = useAccess();
+  const { can, user } = useAccess();
 
   const visibles = ONGLETS.filter((o) => can(o.access));
   const [onglet, setOnglet] = useState<Cle | null>(null);
 
   if (gating || !allowed) return <AccessPending />;
+
+  if (user?.real_role !== 100) {
+    return (
+      <div className="space-y-4">
+        <PageHero title="Configuration" icon={Settings} />
+        <div
+          role="alert"
+          className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-[13px] text-amber-900"
+        >
+          <p className="font-semibold">Réservé à l&apos;administrateur.</p>
+          <p className="mt-0.5">
+            Cet écran règle les comptes, les rôles et les référentiels de la
+            plateforme. Il est ouvert aux seuls comptes administrateurs.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const actif = onglet ?? visibles[0]?.cle ?? "comptes";
 

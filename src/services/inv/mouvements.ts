@@ -1,6 +1,6 @@
 import { apiGet, apiPost, withQuery } from "@/lib/api/http";
 import type {
-  DemandesResponse, MouvementListResponse, MouvementQuery,
+  DemandesResponse, FicheTransfertResponse, MouvementListResponse, MouvementQuery,
 } from "@/types/inv/mouvement";
 
 export const listMouvements = (q: MouvementQuery): Promise<MouvementListResponse> =>
@@ -45,3 +45,7 @@ export const traiterReforme = (body: {
   motif?: string;
 }): Promise<{ traites: number; id_document: number | null }> =>
   apiPost("/api/mouvements/reforme/traiter", body);
+
+/** La fiche de transfert d'un document — celle que le service signe et classe. */
+export const getFicheTransfert = (id: number): Promise<FicheTransfertResponse> =>
+  apiGet(`/api/mouvements/document/${id}`);

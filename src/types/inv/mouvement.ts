@@ -64,3 +64,34 @@ export interface DemandesResponse {
   pages: number;
   demandes: DemandeReforme[];
 }
+
+/** L'en-tête d'une fiche de transfert, tel que l'imprime FicheTransfertPrint. */
+export interface FicheTransfertDoc {
+  id_document: number;
+  numero: string;
+  date_document: string | null;
+  motif: string | null;
+  observation: string | null;
+  loc_source: string | null;
+  loc_destination: string | null;
+  service_source: string | null;
+  service_destination: string | null;
+  type_code: string | null;
+  type_libelle: string | null;
+}
+
+/** Une ligne de la fiche — un bien déplacé. */
+export interface FicheTransfertLigne {
+  id_article: number;
+  num_inventaire: string;
+  designation: string;
+  marque: string | null;
+  modele: string | null;
+  num_serie: string | null;
+  etat: string | null;
+}
+
+export interface FicheTransfertResponse {
+  document: FicheTransfertDoc;
+  lignes: FicheTransfertLigne[];
+}

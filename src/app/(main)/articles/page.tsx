@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeftRight, BookMarked, Boxes, Eye, Layers, PackageX, Pencil, Printer,
-  QrCode, Recycle, ScanLine, Trash2,
+  Recycle, ScanLine, Trash2,
 } from "lucide-react";
 import PageHero from "@/components/ui/PageHero";
 import ListToolbar from "@/components/ui/ListToolbar";
 import DataTable, { Td } from "@/components/ui/DataTable";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import IconAction from "@/components/ui/IconAction";
 import { Banner, Select } from "@/components/ui/Form";
 import AccessPending from "@/components/ui/AccessPending";
@@ -20,21 +21,16 @@ import ChoixImpressionModal, {
   type TypeImpression,
 } from "@/components/modules/articles/ChoixImpressionModal";
 import FicheArticlePrint from "@/components/modules/articles/FicheArticlePrint";
-import EtiquetteArticle, {
-  useEtiquettes,
-} from "@/components/modules/articles/EtiquetteArticle";
-import {
-  FORMAT_PAR_DEFAUT, type FormatEtiquette,
-} from "@/lib/inv/formats-etiquette";
+import PlancheEtiquettes from "@/components/modules/impression/PlancheEtiquettes";
 import TourneePresenceModal from "@/components/modules/articles/TourneePresenceModal";
 import { useRequireAccess } from "@/lib/auth/useRequireAccess";
 import { useAccess } from "@/lib/auth/AccessProvider";
 import { ACCESS } from "@/lib/access";
 import { listArticles, supprimerArticle, confirmerPresence } from "@/services/inv/articles";
-import { getReference } from "@/services/inv/reference";
+import { getFamilles, getReference, getSousFamilles } from "@/services/inv/reference";
 import { statutArticleChip, chipStyle } from "@/lib/inv/theme";
 import type { ArticleRow } from "@/types/inv/article";
-import type { ReferenceFeed } from "@/types/inv/reference";
+import type { Lookup, ReferenceFeed } from "@/types/inv/reference";
 
 const TAILLE = 25;
 
@@ -62,23 +58,20 @@ export default function ArticlesPage() {
   const [statut, setStatut] = useState("");
   const [etat, setEtat] = useState("");
   const [categorie, setCategorie] = useState("");
+  const [famille, setFamille] = useState("");
+  const [sousFamille, setSousFamille] = useState("");
   const [service, setService] = useState("");
   const [registre, setRegistre] = useState("");
-  /**
-   * Compteur de demandes de scan.
-   *
-   * La douchette EST un clavier : elle tape le numéro puis valide. Le bouton
-   * n'ouvre donc pas de caméra, il rend la zone de recherche prête à recevoir
-   * la frappe — c'est tout ce dont un lecteur physique a besoin, et cela marche
-   * aussi quand l'utilisateur tape le numéro à la main.
-   */
-  const [scan, setScan] = useState(0);
   const [supprimes, setSupprimes] = useState("sans");
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [ref, setRef] = useState<ReferenceFeed | null>(null);
+  const [familles, setFamilles] = useState<Lookup[]>([]);
+  const [sousFamilles, setSousFamilles] = useState<Lookup[]>([]);
   const [occupe, setOccupe] = useState<number | null>(null);
+  /** L'article dont on vient de demander la suppression. */
+  const [aSupprimer, setASupprimer] = useState<ArticleRow | null>(null);
 
   const [form, setForm] = useState<"creer" | "modifier" | "groupe" | null>(null);
   const [cible, setCible] = useState<number | null>(null);
@@ -96,7 +89,7 @@ export default function ArticlesPage() {
    * porter le même id, donc c'est la PAGE qui le possède, pas les modals.
    */
   const [aImprimer, setAImprimer] = useState<
-    { type: TypeImpression; article: ArticleRow; format?: FormatEtiquette } | null
+    { type: TypeImpression; article: ArticleRow } | null
   >(null);
   const [impressionPrete, setImpressionPrete] = useState(false);
   const [tournee, setTournee] = useState(false);
@@ -104,6 +97,20 @@ export default function ArticlesPage() {
   useEffect(() => {
     void getReference().then(setRef).catch(() => setRef(null));
   }, []);
+
+  // Le catalogue est hierarchique : choisir une categorie restreint les
+  // familles, choisir une famille restreint les sous-familles. Remonter d'un
+  // niveau efface ce qui n'a plus de sens en dessous. Meme cascade que sur
+  // l'ecran Transferts.
+  useEffect(() => {
+    if (!categorie) { setFamilles([]); setFamille(""); return; }
+    void getFamilles(Number(categorie)).then(setFamilles).catch(() => setFamilles([]));
+  }, [categorie]);
+
+  useEffect(() => {
+    if (!famille) { setSousFamilles([]); setSousFamille(""); return; }
+    void getSousFamilles(Number(famille)).then(setSousFamilles).catch(() => setSousFamilles([]));
+  }, [famille]);
 
   /**
    * On n'imprime QU'APRÈS que le document a été peint.
@@ -133,6 +140,8 @@ export default function ArticlesPage() {
         statut: statut || undefined,
         etat: etat || undefined,
         categorie: categorie ? Number(categorie) : undefined,
+        famille: famille ? Number(famille) : undefined,
+        sous_famille: sousFamille ? Number(sousFamille) : undefined,
         service: service ? Number(service) : undefined,
         registre: (registre || undefined) as "oui" | "non" | undefined,
         supprimes: supprimes as "sans" | "seuls" | "tous",
@@ -147,7 +156,7 @@ export default function ArticlesPage() {
     } finally {
       setChargement(false);
     }
-  }, [recherche, statut, etat, categorie, service, registre, supprimes, page]);
+  }, [recherche, statut, etat, categorie, famille, sousFamille, service, registre, supprimes, page]);
 
   useEffect(() => { void charger(); }, [charger]);
 
@@ -169,9 +178,8 @@ export default function ArticlesPage() {
     }
   }
 
-  async function supprimer(a: ArticleRow) {
-    const motif = window.prompt(`Motif de la suppression de ${a.num_inventaire} ?`, "");
-    if (motif === null) return;
+  async function supprimer(a: ArticleRow, motif: string) {
+    setASupprimer(null);
     await agir(a.id_article, () => supprimerArticle(a.id_article, motif), "Article supprimé.");
   }
 
@@ -180,6 +188,12 @@ export default function ArticlesPage() {
     if (!p) { setErreur("Statut de présence « présent » introuvable."); return; }
     await agir(a.id_article, () => confirmerPresence(a.id_article, p.id), "Présence confirmée.");
   }
+
+  /** Le libelle d'un service — la ligne ne porte que son id. */
+  const nomService = (id: number | null) =>
+    id === null
+      ? null
+      : ref?.services.find((s) => s.id_service === id)?.lib_service ?? null;
 
   if (gating || !allowed) return <AccessPending />;
 
@@ -196,46 +210,37 @@ export default function ArticlesPage() {
       <ListToolbar
         recherche={recherche}
         onRecherche={(v) => filtrer(() => setRecherche(v))}
-        focusSignal={scan}
         placeholder="N° d'inventaire, désignation, n° de série, marque…"
         total={total}
         onAdd={can(ACCESS.ARTICLES_CREER) ? () => { setCible(null); setForm("creer"); } : undefined}
         addLabel="Nouvel article"
         actions={
           <>
-            {/* LA TOURNÉE — caméra allumée en continu, un scan = un pointage.
-                Placée en premier et en plein cyan parce que c'est l'action pour
-                laquelle on sort le téléphone : confirmer que les biens sont
-                bien là. L'icône de présence reste sur chaque ligne pour le cas
-                d'un seul bien, au bureau. */}
+            {/* SCANNER — camera allumee en continu, un scan = un pointage.
+                `md:hidden` : on ne scanne pas un meuble depuis un poste fixe.
+                Le bouton n'a de sens que le telephone a la main, dans le
+                couloir, devant l'armoire.
+
+                Il y en avait DEUX auparavant : celui-ci, et un « Scanner » qui
+                ne faisait que donner le focus a la zone de recherche pour une
+                douchette. Deux boutons portant la meme promesse pour deux
+                gestes differents — le second est parti, la douchette tape de
+                toute facon dans le champ des qu'on clique dedans. */}
             {can(ACCESS.ARTICLES_PRESENCE) && (
               <button
                 type="button"
                 onClick={() => setTournee(true)}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-emerald-700"
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg sm:flex-none sm:shrink-0 bg-emerald-600 px-3 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-emerald-700 md:hidden"
               >
                 <ScanLine size={15} />
-                Tournée
+                Scanner
               </button>
             )}
-            {/* Chercher par code scanné : la douchette tape le numéro dans la
-                zone de recherche et valide. Le bouton ne fait que donner le
-                focus — c'est le lecteur qui saisit, pas l'écran. */}
-            <button
-              type="button"
-              onClick={() => {
-                setScan((n) => n + 1);
-              }}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-[12.5px] font-semibold text-slate-600 transition-colors hover:border-slate-400 hover:bg-slate-50"
-            >
-              <QrCode size={15} />
-              Scanner
-            </button>
             {can(ACCESS.ARTICLES_CREER_GROUPE) && (
               <button
                 type="button"
                 onClick={() => { setCible(null); setForm("groupe"); }}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-cyan-600 bg-white px-3 py-2 text-[12.5px] font-semibold text-cyan-700 transition-colors hover:bg-cyan-50"
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg sm:flex-none sm:shrink-0 border border-cyan-600 bg-white px-3 py-2 text-[12.5px] font-semibold text-cyan-700 transition-colors hover:bg-cyan-50"
               >
                 <Layers size={15} />
                 Nouveau groupe
@@ -273,6 +278,28 @@ export default function ArticlesPage() {
               <option value="">Toutes catégories</option>
               {(ref?.categories ?? []).map((c) => (
                 <option key={c.id} value={c.id}>{c.libelle}</option>
+              ))}
+            </Select>
+            <Select
+              value={famille}
+              onChange={(e) => filtrer(() => setFamille(e.target.value))}
+              disabled={familles.length === 0}
+              className="w-auto min-w-[150px]"
+            >
+              <option value="">Toutes familles</option>
+              {familles.map((f) => (
+                <option key={f.id} value={f.id}>{f.libelle}</option>
+              ))}
+            </Select>
+            <Select
+              value={sousFamille}
+              onChange={(e) => filtrer(() => setSousFamille(e.target.value))}
+              disabled={sousFamilles.length === 0}
+              className="w-auto min-w-[160px]"
+            >
+              <option value="">Toutes sous-familles</option>
+              {sousFamilles.map((f) => (
+                <option key={f.id} value={f.id}>{f.libelle}</option>
               ))}
             </Select>
             <Select
@@ -315,11 +342,9 @@ export default function ArticlesPage() {
       <DataTable
         colonnes={[
           { titre: "N° inventaire" },
-          { titre: "Voie" },
           { titre: "Désignation" },
           { titre: "Localisation" },
           { titre: "Catégorie" },
-          { titre: "État" },
           { titre: "Statut" },
           { titre: "Actions", className: "text-right" },
         ]}
@@ -327,7 +352,7 @@ export default function ArticlesPage() {
         cle={(a) => a.id_article}
         chargement={chargement}
         messageVide="Aucun article ne correspond à ces critères."
-        largeurMin={1180}
+        largeurMin={1040}
         page={page}
         pages={pages}
         onPage={setPage}
@@ -336,58 +361,57 @@ export default function ArticlesPage() {
           const enService = !a.supprime && a.statut_code !== "reforme";
           return (
             <>
-              <Td className="font-mono text-[12.5px] font-medium text-slate-700">
-                {a.num_inventaire}
-              </Td>
-              {/* Qui a attribué ce numéro — le compteur, ou le registre papier.
-                  Deux biens voisins dans la liste peuvent ne pas avoir la même
-                  autorité derrière leur numéro, et cela se lit ici. */}
-              <Td>
-                {a.est_registre ? (
-                  <span
-                    title={
-                      a.num_registre && a.num_registre !== a.num_inventaire
-                        ? `Registre : ${a.num_registre}`
-                        : "Numéro transcrit du registre officiel"
-                    }
-                    className="inline-flex items-center gap-1 rounded-md bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700"
-                  >
-                    <BookMarked size={11} />
-                    Registre
-                  </span>
-                ) : (
-                  <span
-                    title={
-                      a.num_registre
-                        ? `Renvoi au cahier papier : ${a.num_registre}`
-                        : "Numéro attribué par le compteur"
-                    }
-                    className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600"
-                  >
-                    Physique
-                  </span>
-                )}
+              {/* Le numero, et SOUS lui la voie qui l'a attribue — P comme
+                  physique (le compteur), R comme registre (transcrit du cahier
+                  officiel). C'etait une colonne entiere pour une seule lettre
+                  d'information, qui poussait la localisation hors de l'ecran.
+                  La voie appartient au numero : elle dit quelle autorite est
+                  derriere lui, elle ne vaut rien sans lui. */}
+              <Td className="whitespace-nowrap">
+                <span className="block font-mono text-[12.5px] font-medium text-slate-700">
+                  {a.num_inventaire}
+                </span>
+                <span
+                  title={
+                    a.est_registre
+                      ? (a.num_registre && a.num_registre !== a.num_inventaire
+                          ? "Registre : " + a.num_registre
+                          : "Numéro transcrit du registre officiel")
+                      : (a.num_registre
+                          ? "Renvoi au cahier papier : " + a.num_registre
+                          : "Numéro attribué par le compteur")
+                  }
+                  className={
+                    "mt-0.5 inline-flex items-center gap-1 rounded px-1.5 text-[10px] font-bold " +
+                    (a.est_registre
+                      ? "bg-violet-50 text-violet-700"
+                      : "bg-slate-100 text-slate-500")
+                  }
+                >
+                  {a.est_registre ? <BookMarked size={9} /> : null}
+                  {a.est_registre ? "R" : "P"}
+                </span>
               </Td>
               <Td className="font-medium text-slate-800">{a.designation}</Td>
+              {/* Service AU-DESSUS, local en dessous — deux lignes, chacune
+                  entiere. Sur une seule ligne, « DIRECTION-DES-MOYENS-MATERIELS
+                  | BUR-CONTABILITE » depassait la colonne et se faisait couper
+                  au milieu du service, qui est justement ce qu'on cherche. */}
               <Td>
-                {a.localisation ?? (
+                {a.localisation || a.id_service !== null ? (
+                  <span className="block leading-tight">
+                    <span className="block truncate text-[12.5px] font-medium text-slate-700">
+                      {nomService(a.id_service) ?? "—"}
+                    </span>
+                    <span className="block truncate text-[11.5px] text-slate-500">
+                      {a.localisation ?? "—"}
+                    </span>
+                  </span>
+                ) : (
                   <span className="text-[12px] italic text-amber-600">sans localisation</span>
                 )}
               </Td>
               <Td className="text-slate-500">{a.categorie ?? "—"}</Td>
-              <Td>
-                {a.etat ? (
-                  <span
-                    className="rounded-md px-2 py-0.5 text-[11px] font-semibold"
-                    style={chipStyle({
-                      bg: `${a.etat_couleur ?? "#94a3b8"}22`,
-                      fg: a.etat_couleur ?? "#475569",
-                    })}
-                  >
-                    {a.etat}
-                  </span>
-                ) : "—"}
-              </Td>
               <Td>
                 <span
                   className="rounded-md px-2 py-0.5 text-[11px] font-semibold"
@@ -489,7 +513,7 @@ export default function ArticlesPage() {
                       title="Supprimer"
                       tone="danger"
                       disabled={occupe !== null}
-                      onClick={() => void supprimer(a)}
+                      onClick={() => setASupprimer(a)}
                     >
                       <Trash2 size={14} />
                     </IconAction>
@@ -539,13 +563,44 @@ export default function ArticlesPage() {
         }}
       />
 
+      <ConfirmModal
+        open={aSupprimer !== null}
+        titre="Supprimer l'article"
+        ton="danger"
+        confirmer="Supprimer"
+        occupe={occupe !== null}
+        motif="obligatoire"
+        labelMotif="Motif de la suppression"
+        message={
+          <>
+            L&apos;article sort de la liste active. Un administrateur peut le
+            restaurer : la ligne n&apos;est pas effacée, elle est datée et
+            signée.
+          </>
+        }
+        detail={
+          aSupprimer && (
+            <>
+              <span className="font-mono text-[12px] text-slate-500">
+                {aSupprimer.num_inventaire}
+              </span>
+              <p className="font-medium text-slate-800">{aSupprimer.designation}</p>
+            </>
+          )
+        }
+        onFermer={() => setASupprimer(null)}
+        onConfirmer={(motif) => {
+          if (aSupprimer) void supprimer(aSupprimer, motif);
+        }}
+      />
+
       <ChoixImpressionModal
         article={choixImpression}
         onClose={() => setChoixImpression(null)}
-        onChoisir={(type, format) => {
+        onChoisir={(type) => {
           if (!choixImpression) return;
           setImpressionPrete(false);
-          setAImprimer({ type, article: choixImpression, format });
+          setAImprimer({ type, article: choixImpression });
         }}
       />
 
@@ -556,7 +611,14 @@ export default function ArticlesPage() {
       <div
         id="print-ticket"
         aria-hidden
-        className="pointer-events-none absolute -left-[10000px] top-0 w-[210mm]"
+        className={
+          "pointer-events-none absolute -left-[10000px] top-0 " +
+          // La largeur A4 n'appartient QU'À LA FICHE. L'imposer aussi à une
+          // étiquette de 40 mm lui donnerait un conteneur de 210 mm, et
+          // l'étiquette ne se poserait pas sur la page comme celle que sort la
+          // page Impressions — dont le conteneur, lui, n'a pas de largeur.
+          (aImprimer?.type === "etiquette" ? "" : "w-[210mm]")
+        }
       >
         {aImprimer?.type === "fiche" && (
           <FicheArticlePrint
@@ -564,63 +626,34 @@ export default function ArticlesPage() {
             onPret={setImpressionPrete}
           />
         )}
+        {/* LE MÊME COMPOSANT QUE LA PAGE IMPRESSIONS, avec un lot d'un seul
+            article — et non une seconde implémentation de l'étiquette.
+            Il y en avait deux : celle-ci rendait l'étiquette nue, l'autre la
+            posait dans `.etiq-page` avec son `@page`. Deux rendus du même
+            autocollant finissent toujours par diverger, et c'est ce qui était
+            arrivé — la forme imprimée n'était pas la même des deux écrans. */}
         {aImprimer?.type === "etiquette" && (
-          <EtiquetteSeule
-            article={aImprimer.article}
-            format={aImprimer.format ?? FORMAT_PAR_DEFAUT}
-            // Le nom du service : la ligne ne porte que son id, et le
-            // référentiel est déjà chargé pour les filtres.
-            service={
-              ref?.services.find(
-                (s) => s.id_service === aImprimer.article.id_service,
-              )?.lib_service ?? null
-            }
+          <PlancheEtiquettes
+            etiquettes={[
+              {
+                num_inventaire: aImprimer.article.num_inventaire,
+                designation: aImprimer.article.designation,
+                localisation: aImprimer.article.localisation,
+                // Le nom du service : la ligne ne porte que son id, et le
+                // référentiel est déjà chargé pour les filtres.
+                service:
+                  ref?.services.find(
+                    (s) => s.id_service === aImprimer.article.id_service,
+                  )?.lib_service ?? null,
+                marque: aImprimer.article.marque,
+                modele: aImprimer.article.modele,
+                num_serie: aImprimer.article.num_serie,
+              },
+            ]}
             onPret={setImpressionPrete}
           />
         )}
       </div>
     </div>
-  );
-}
-
-/**
- * Une étiquette seule sur sa feuille.
- *
- * Le hook doit être appelé depuis un composant, pas depuis le JSX de la page :
- * il ne peut pas vivre sous une condition. D'où ce composant minuscule, monté
- * seulement quand on imprime une étiquette.
- */
-function EtiquetteSeule({
-  article, format, service, onPret,
-}: {
-  article: ArticleRow;
-  format: FormatEtiquette;
-  service: string | null;
-  onPret: (pret: boolean) => void;
-}) {
-  const { pret, logo, qrs } = useEtiquettes([article.num_inventaire]);
-
-  useEffect(() => { onPret(pret); }, [pret, onPret]);
-
-  return (
-    <>
-      {/* Le format de PAGE est celui de l'étiquette : une étiqueteuse
-          imprime des pages, et une page A4 lui ferait dérouler 30 cm de
-          ruban pour une vignette de 8 cm. */}
-      <style>{`@page { size: ${format.largeur}mm ${format.hauteur}mm; margin: 0; }`}</style>
-      <EtiquetteArticle
-        article={{
-          num_inventaire: article.num_inventaire,
-          designation: article.designation,
-          localisation: article.localisation,
-          service,
-          marque: article.marque,
-          num_serie: article.num_serie,
-        }}
-        format={format}
-        logo={logo}
-        qr={qrs[article.num_inventaire]}
-      />
-    </>
   );
 }

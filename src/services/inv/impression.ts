@@ -32,6 +32,8 @@ export interface FiltresImpression {
   service?: number;
   localisation?: number;
   categorie?: number;
+  famille?: number;
+  sous_famille?: number;
   statut?: string;
   /** 'localisation' ventile par local ; 'aucun' rend une seule liste. */
   groupe?: "localisation" | "aucun";
@@ -42,6 +44,8 @@ const params = (f: FiltresImpression) => ({
   service: f.service,
   localisation: f.localisation,
   categorie: f.categorie,
+  famille: f.famille,
+  sous_famille: f.sous_famille,
   statut: f.statut,
   groupe: f.groupe,
   inclure_sortis: f.inclure_sortis ? "1" : undefined,

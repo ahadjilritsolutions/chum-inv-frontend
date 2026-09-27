@@ -1,17 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeftRight, ArrowRight } from "lucide-react";
+import { ArrowLeftRight, ArrowRight, Printer } from "lucide-react";
 import PageHero from "@/components/ui/PageHero";
 import ListToolbar from "@/components/ui/ListToolbar";
 import DataTable, { Td } from "@/components/ui/DataTable";
+import IconAction from "@/components/ui/IconAction";
+import FicheTransfertPrint from "@/components/modules/mouvements/FicheTransfertPrint";
 import { Banner, Select } from "@/components/ui/Form";
 import AccessPending from "@/components/ui/AccessPending";
 import { useRequireAccess } from "@/lib/auth/useRequireAccess";
+import { useAccess } from "@/lib/auth/AccessProvider";
 import { ACCESS } from "@/lib/access";
 import { listMouvements } from "@/services/inv/mouvements";
 import { getFamilles, getReference, getSousFamilles } from "@/services/inv/reference";
-import { mouvementChip, chipStyle } from "@/lib/inv/theme";
 import { formatDate } from "@/components/modules/articles/ArticleDetailModal";
 import type { MouvementRow } from "@/types/inv/mouvement";
 import type { Lookup, ReferenceFeed } from "@/types/inv/reference";
@@ -30,13 +32,14 @@ const TAILLE = 25;
  */
 export default function TransfertsPage() {
   const { allowed, loading: gating } = useRequireAccess(ACCESS.MOUVEMENTS_VOIR);
+  const { can } = useAccess();
+  const peutImprimer = can(ACCESS.TRANSFERT_FICHE_IMPRIMER);
 
   const [lignes, setLignes] = useState<MouvementRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [recherche, setRecherche] = useState("");
-  const [type, setType] = useState("transfert");
   const [service, setService] = useState("");
   const [categorie, setCategorie] = useState("");
   const [famille, setFamille] = useState("");
@@ -48,6 +51,9 @@ export default function TransfertsPage() {
   const [ref, setRef] = useState<ReferenceFeed | null>(null);
   const [familles, setFamilles] = useState<Lookup[]>([]);
   const [sousFamilles, setSousFamilles] = useState<Lookup[]>([]);
+  /** La fiche demandee a l'impression, et son signal « peinte ». */
+  const [fiche, setFiche] = useState<number | null>(null);
+  const [fichePrete, setFichePrete] = useState(false);
 
   useEffect(() => {
     void getReference().then(setRef).catch(() => setRef(null));
@@ -72,7 +78,11 @@ export default function TransfertsPage() {
     try {
       const d = await listMouvements({
         q: recherche || undefined,
-        type: type || undefined,
+        // L'ecran s'appelle Transferts : le type est FIXE. Le selecteur qui
+        // permettait d'y lire des reformes et des creations proposait de
+        // quitter la page sans la quitter — quatre de ses cinq valeurs
+        // affichaient autre chose que ce que le titre annoncait.
+        type: "transfert",
         service: service ? Number(service) : undefined,
         categorie: categorie ? Number(categorie) : undefined,
         famille: famille ? Number(famille) : undefined,
@@ -90,11 +100,29 @@ export default function TransfertsPage() {
     } finally {
       setChargement(false);
     }
-  }, [recherche, type, service, categorie, famille, sousFamille, du, au, page]);
+  }, [recherche, service, categorie, famille, sousFamille, du, au, page]);
 
   useEffect(() => { void charger(); }, [charger]);
 
   const filtrer = (fn: () => void) => { fn(); setPage(1); };
+
+  /**
+   * On n'imprime QU'APRES que la fiche a ete peinte.
+   *
+   * Dans le meme tick, window.print() sortirait une feuille blanche. Les 80 ms
+   * laissent au navigateur le temps de poser l'ecusson et le QR de l'en-tete
+   * avant d'ouvrir sa propre fenetre d'apercu. Meme montage que la page
+   * Articles.
+   */
+  useEffect(() => {
+    if (fiche === null || !fichePrete) return;
+    const t = setTimeout(() => {
+      window.print();
+      setFiche(null);
+      setFichePrete(false);
+    }, 80);
+    return () => clearTimeout(t);
+  }, [fiche, fichePrete]);
 
   if (gating || !allowed) return <AccessPending />;
 
@@ -114,17 +142,6 @@ export default function TransfertsPage() {
         total={total}
         filters={
           <>
-            <Select
-              value={type}
-              onChange={(e) => filtrer(() => setType(e.target.value))}
-              className="w-auto min-w-[160px]"
-            >
-              <option value="transfert">Transferts</option>
-              <option value="">Tous les mouvements</option>
-              <option value="proposition_reforme">Propositions de réforme</option>
-              <option value="reforme">Réformes</option>
-              <option value="creation">Créations</option>
-            </Select>
             <Select
               value={service}
               onChange={(e) => filtrer(() => setService(e.target.value))}
@@ -167,20 +184,32 @@ export default function TransfertsPage() {
                 <option key={f.id} value={f.id}>{f.libelle}</option>
               ))}
             </Select>
-            <input
-              type="date"
-              value={du}
-              onChange={(e) => filtrer(() => setDu(e.target.value))}
-              title="Du"
-              className="h-10 rounded-lg border border-slate-200 px-2.5 text-[13px] text-slate-700 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/10"
-            />
-            <input
-              type="date"
-              value={au}
-              onChange={(e) => filtrer(() => setAu(e.target.value))}
-              title="Au"
-              className="h-10 rounded-lg border border-slate-200 px-2.5 text-[13px] text-slate-700 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/10"
-            />
+            {/* Deux champs de date cote a cote ne disent pas lequel est le
+                debut. Le navigateur affiche « jj/mm/aaaa » dans les deux, et
+                l'attribut title ne se lit qu'au survol — donc jamais sur une
+                tablette. Les mots sont ecrits. */}
+            {/* Les deux dates forment UN filtre, d'où le conteneur commun. Il
+                revient à la ligne sur un téléphone : « De [jj/mm/aaaa] jusqu'à
+                [jj/mm/aaaa] » demande 400 px, et sur 300 px il poussait toute
+                la page en défilement horizontal. */}
+            <span className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[12.5px] font-medium text-slate-500">De</span>
+              <input
+                type="date"
+                value={du}
+                onChange={(e) => filtrer(() => setDu(e.target.value))}
+                aria-label="Date de début"
+                className="h-10 min-w-0 flex-1 rounded-lg border border-slate-200 px-2.5 text-[13px] text-slate-700 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/10 sm:flex-none"
+              />
+              <span className="text-[12.5px] font-medium text-slate-500">jusqu&apos;à</span>
+              <input
+                type="date"
+                value={au}
+                onChange={(e) => filtrer(() => setAu(e.target.value))}
+                aria-label="Date de fin"
+                className="h-10 min-w-0 flex-1 rounded-lg border border-slate-200 px-2.5 text-[13px] text-slate-700 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/10 sm:flex-none"
+              />
+            </span>
           </>
         }
       />
@@ -188,35 +217,27 @@ export default function TransfertsPage() {
       <DataTable
         colonnes={[
           { titre: "Date" },
-          { titre: "Type" },
           { titre: "N° inventaire" },
           { titre: "Désignation" },
           { titre: "De → Vers" },
-          { titre: "Document" },
           { titre: "Motif" },
+          // La fiche ferme la ligne : c'est ce qu'on va CHERCHER une fois
+          // qu'on a reconnu le mouvement, donc apres l'avoir lu, pas avant.
+          { titre: "Fiche" },
         ]}
         lignes={lignes}
         cle={(m) => m.id_mouvement}
         chargement={chargement}
         messageVide="Aucun mouvement ne correspond à ces critères."
-        largeurMin={1120}
+        largeurMin={1000}
         page={page}
         pages={pages}
         onPage={setPage}
         rendu={(m) => {
-          const c = mouvementChip(m.type);
           return (
             <>
               <Td className="whitespace-nowrap text-slate-600">
                 {formatDate(m.date_mouvement)}
-              </Td>
-              <Td>
-                <span
-                  className="whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-semibold"
-                  style={chipStyle(c)}
-                >
-                  {c.label}
-                </span>
               </Td>
               <Td className="font-mono text-[12.5px] font-medium text-slate-700">
                 {m.num_inventaire}
@@ -239,16 +260,55 @@ export default function TransfertsPage() {
                   </span>
                 )}
               </Td>
-              <Td className="font-mono text-[12px] text-slate-500">
-                {m.num_document ?? "—"}
-              </Td>
               <Td className="max-w-[220px] truncate text-[12.5px] text-slate-500">
                 {m.commentaire ?? "—"}
+              </Td>
+              <Td>
+                {/* Le numero ET le bouton : le numero est ce qui figure sur le
+                    papier classe, le bouton est ce qui en ressort un autre
+                    exemplaire. Un transfert peut avoir ete fait sans fiche
+                    (avec_document est facultatif) — on le dit plutot que de
+                    proposer d'imprimer un document qui n'existe pas. */}
+                {m.id_document ? (
+                  <span className="flex items-center gap-2 whitespace-nowrap">
+                    <span className="font-mono text-[12px] text-slate-500">
+                      {m.num_document ?? "—"}
+                    </span>
+                    {peutImprimer && (
+                      <IconAction
+                        title={"Imprimer la fiche " + (m.num_document ?? "")}
+                        tone="print"
+                        onClick={() => {
+                          setFichePrete(false);
+                          setFiche(m.id_document);
+                        }}
+                      >
+                        <Printer size={14} />
+                      </IconAction>
+                    )}
+                  </span>
+                ) : (
+                  <span className="text-[12px] italic text-slate-400">sans fiche</span>
+                )}
               </Td>
             </>
           );
         }}
       />
+
+      {/* Gare hors champ plutot qu'en display:none — un element masque n'a pas
+          de mise en page, et l'imprimer fait sauter la premiere page.
+          globals.css fait de ce conteneur la seule chose visible sur la
+          feuille. */}
+      <div
+        id="print-ticket"
+        aria-hidden
+        className="pointer-events-none absolute -left-[10000px] top-0 w-[210mm]"
+      >
+        {fiche !== null && (
+          <FicheTransfertPrint id={fiche} onPret={setFichePrete} />
+        )}
+      </div>
     </div>
   );
 }
