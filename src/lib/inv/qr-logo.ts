@@ -4,7 +4,7 @@ import QRCode from "qrcode";
 import { chargerLogo } from "./logo";
 
 /**
- * LE QR DE L'ÉTIQUETTE, AVEC L'ÉCUSSON DU CHU EN SON CENTRE.
+ * LE QR DE L'ÉTIQUETTE, AVEC L'ÉCUSSON DE L'ÉTABLISSEMENT EN SON CENTRE.
  *
  * L'étiquette ne porte plus que DEUX choses : ce code et le texte. L'écusson
  * n'est plus une image posée à côté — il est DANS le code, comme sur les QR

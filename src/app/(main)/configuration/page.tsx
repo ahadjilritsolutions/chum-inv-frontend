@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { DoorOpen, Settings, Shield, Tags, Users, type LucideIcon } from "lucide-react";
+import { DoorOpen, Landmark, Settings, Shield, Tags, Users, type LucideIcon } from "lucide-react";
 import PageHero from "@/components/ui/PageHero";
 import AccessPending from "@/components/ui/AccessPending";
 import SectionRoles from "@/components/modules/config/SectionRoles";
 import SectionCatalogue from "@/components/modules/config/SectionCatalogue";
 import SectionLocalisations from "@/components/modules/config/SectionLocalisations";
 import SectionComptes from "@/components/modules/config/SectionComptes";
+import IdentiteSection from "@/components/branding/IdentiteSection";
 import { useRequireAccess } from "@/lib/auth/useRequireAccess";
 import { useAccess } from "@/lib/auth/AccessProvider";
 import { ACCESS, type AccessCode } from "@/lib/access";
@@ -45,10 +46,14 @@ import { cn } from "@/lib/utils";
  * cacher une entrée de menu ne ferme pas une URL.
  */
 
-type Cle = "comptes" | "roles" | "catalogue" | "localisations";
+type Cle = "comptes" | "roles" | "catalogue" | "localisations" | "identite";
 
+// `access` omis = visible dès que la page s'ouvre. La page entière est
+// déjà réservée au rôle 100 (voir plus bas), et l'identité de
+// l'établissement n'est pas un droit qu'on délègue à un rôle d'inventaire :
+// c'est l'en-tête de toute l'installation, partagé avec la DEP et le Magasin.
 const ONGLETS: ReadonlyArray<{
-  cle: Cle; libelle: string; icon: LucideIcon; access: AccessCode;
+  cle: Cle; libelle: string; icon: LucideIcon; access?: AccessCode;
 }> = [
   // Les comptes en premier : donner l'accès à quelqu'un est le geste le plus
   // fréquent, et c'est aussi par là qu'on reprend les comptes de l'ancienne
@@ -57,6 +62,7 @@ const ONGLETS: ReadonlyArray<{
   { cle: "roles", libelle: "Rôles et accès", icon: Shield, access: ACCESS.CONFIG_ROLES_VOIR },
   { cle: "catalogue", libelle: "Catalogue", icon: Tags, access: ACCESS.CONFIG_CATALOGUE_VOIR },
   { cle: "localisations", libelle: "Localisations", icon: DoorOpen, access: ACCESS.CONFIG_STRUCTURE_VOIR },
+  { cle: "identite", libelle: "Identité", icon: Landmark },
 ];
 
 export default function ConfigurationPage() {
@@ -70,7 +76,7 @@ export default function ConfigurationPage() {
   );
   const { can, user } = useAccess();
 
-  const visibles = ONGLETS.filter((o) => can(o.access));
+  const visibles = ONGLETS.filter((o) => !o.access || can(o.access));
   const [onglet, setOnglet] = useState<Cle | null>(null);
 
   if (gating || !allowed) return <AccessPending />;
@@ -135,6 +141,7 @@ export default function ConfigurationPage() {
       {actif === "roles" && can(ACCESS.CONFIG_ROLES_VOIR) && <SectionRoles />}
       {actif === "catalogue" && can(ACCESS.CONFIG_CATALOGUE_VOIR) && <SectionCatalogue />}
       {actif === "localisations" && can(ACCESS.CONFIG_STRUCTURE_VOIR) && <SectionLocalisations />}
+      {actif === "identite" && <IdentiteSection />}
     </div>
   );
 }

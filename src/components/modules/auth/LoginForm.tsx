@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image";
 import { ArrowLeft, Boxes, Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { withBasePath } from "@/lib/basePath";
+import { logoSrc, useBranding } from "@/lib/brand";
 import { login } from "@/services/auth/auth";
 import { saveAuthSession } from "@/lib/auth/auth-client";
 import { landingPathFor } from "@/lib/auth/landing";
@@ -59,6 +58,7 @@ const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? "https://192.168.254.10
  * Voir lib/auth/landing.ts.
  */
 export default function LoginForm() {
+  const branding = useBranding();
   const router = useRouter();
   const params = useSearchParams();
 
@@ -157,32 +157,32 @@ export default function LoginForm() {
             </a>
 
             <div className="flex flex-col items-center text-center">
-              <div className="relative mb-6 h-40 w-40">
-                {/* withBasePath : l'optimiseur de next/image ne préfixe PAS le
-                    paramètre `url` du basePath, alors qu'il est lui-même monté
-                    dessous. Sans cela, derrière nginx, il va chercher
-                    /chu_logo_new.png à la racine du serveur — qui appartient à
-                    une autre application — et rend un 400. */}
-                <Image
-                  src={withBasePath("/chu_logo_new.png")}
-                  alt="CHU Mustapha"
-                  fill
-                  priority
-                  className="object-contain drop-shadow-2xl"
+              {/* Le logo de l'établissement s'il en a téléversé un, sinon la
+                  marque du produit. Balise <img> et non next/image :
+                  la source est une URL du backend ou une data-URL, que
+                  l'optimiseur ne sait pas traiter. */}
+              <div className="relative mb-6 flex h-40 w-40 items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={logoSrc(branding)}
+                  alt={branding.nom}
+                  className="max-h-full max-w-full object-contain drop-shadow-2xl"
                 />
               </div>
 
-              <h1 className="text-3xl font-bold">CHU Mustapha</h1>
-              <h2 className="mt-1 text-xl font-semibold opacity-80" dir="rtl">
-                المركز الاستشفائي الجامعي مصطفى
-              </h2>
+              <h1 className="text-3xl font-bold">{branding.nom}</h1>
+              {branding.nom_ar && (
+                <h2 className="mt-1 text-xl font-semibold opacity-80" dir="rtl">
+                  {branding.nom_ar}
+                </h2>
+              )}
               <p className="mt-3 text-sm text-white/70">
                 Gestion de l&apos;inventaire
               </p>
 
               <div
                 className="mt-6 inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold shadow-lg"
-                style={{ background: "linear-gradient(135deg,#0891b2,#06b6d4)" }}
+                style={{ background: "linear-gradient(135deg,var(--brand-or),var(--brand-or-clair))" }}
               >
                 <Boxes size={14} />
                 Bureau des inventaires

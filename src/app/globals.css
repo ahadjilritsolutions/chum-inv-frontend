@@ -1,25 +1,37 @@
 @import "tailwindcss";
 
-/* ── Design tokens ─────────────────────────────────────────────────────────────
-   Identical to the DEP frontend's tokens. DEP and LIS are two applications of
-   the same SIH, and staff move between them in the same session — so the
-   chrome must be indistinguishable. Any change here has a twin in
-   chum-dep-frontend/src/app/globals.css. */
+/* ── Design tokens ───────────────────────────────────────────────────────── */
 :root {
   --background: #ffffff;
   --foreground: #171717;
 
-  /* Sidebar dark gradient  (matches PHP .main-sidebar) */
-  --gradient-sidebar: linear-gradient(180deg, #0b1a2e 0%, #0f2847 60%, #0a3060 100%);
+  /* ── L&R IT Solutions brand palette ──────────────────────────────────────────
+     Sampled from the logo files, not eyeballed: navy #0f1b3d is 85 % of the app
+     tile and the ink of the light lockup, gold #a8812e is the hexagon mark,
+     cream #ebe8e1 is the lockup's own background.
 
-  /* Navbar / brand gradient  (matches PHP .navbar + .brand-link) */
-  --gradient-brand: linear-gradient(135deg, #0b1a2e 0%, #0f2847 60%, #0891b2 100%);
+     DEP, Inventaire, Magasin and the SIH portal all declare these same five
+     values under these same names. They are one product and a user crosses
+     between them inside a single session, so a change here has a twin in the
+     other three. Unlike the établissement's name and logo, the palette is NOT
+     per-customer: it is the vendor's identity, not the hospital's. */
+  --brand-navy: #0f1b3d;
+  --brand-navy-clair: #16264f;
+  --brand-or: #a8812e;
+  --brand-or-clair: #c9a24b;
+  --brand-creme: #ebe8e1;
+
+  /* Sidebar / navbar chrome. Both stay inside the navy range and let the gold
+     do the accenting — a navy-to-gold sweep across a full-width bar reads as
+     a warning colour rather than as a letterhead. */
+  --gradient-sidebar: linear-gradient(180deg, #0f1b3d 0%, #16264f 60%, #1b2c5e 100%);
+  --gradient-brand: linear-gradient(135deg, #0f1b3d 0%, #16264f 60%, #22356b 100%);
 
   /* Application background behind the cards. */
   --app-bg: #f0f2f5;
 
-  /* Solid navy of table headers — the opaque end of --gradient-brand. */
-  --header-navy: #0f2847;
+  /* Solid navy of table headers — the middle stop of --gradient-brand. */
+  --header-navy: #16264f;
 }
 
 /* ── Tailwind theme ────────────────────────────────────────────────────────── */

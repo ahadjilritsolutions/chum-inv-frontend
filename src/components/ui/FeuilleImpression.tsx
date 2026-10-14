@@ -2,6 +2,8 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import QRCode from "qrcode";
+import { resoudreEntete, useBranding } from "@/lib/brand";
+import { chargerLogo } from "@/lib/inv/logo";
 
 /**
  * La feuille A4 de TOUT document imprimé du module — fiche d'article, fiche de
@@ -9,9 +11,12 @@ import QRCode from "qrcode";
  *
  * Reprise de magasin-migration, qui la tenait du PrintTemplate de la DEP :
  * même géométrie (210×297 mm, marge 12 mm), même bandeau (écusson à gauche,
- * les trois lignes de la République au centre, QR à droite), même
- * titre-filet-« N° / Alger le : », même corps sans-serif 12 px. Les agents
- * classent une fiche d'article et un bon de sortie dans le même dossier.
+ * l'en-tête de l'établissement au centre, QR à droite), même
+ * titre-filet-« N° / le : », même corps sans-serif 12 px. Les agents classent
+ * une fiche d'article et un bon de sortie dans le même dossier.
+ *
+ * L'en-tête lui-même n'est plus écrit ici : il vient de Configuration ›
+ * Identité, via lib/brand, partagé avec les frontends DEP et Magasin.
  *
  * Ce qui change tient aux deux lignes de contexte : un document d'inventaire
  * nomme un SERVICE et une LOCALISATION là où le magasin nommait un magasin et
@@ -56,40 +61,6 @@ export interface FeuilleImpressionProps {
   children: ReactNode;
 }
 
-// The logo has to be inline as a data-URL: the sheet is printed straight from
-// the page, and an <img> still fetching over HTTP when print() fires comes out
-// blank. Cached at module level so it is read once per session.
-let logoCache: string | null = null;
-let logoPromise: Promise<string | null> | null = null;
-
-async function chargerLogo(): Promise<string | null> {
-  if (logoCache) return logoCache;
-  if (logoPromise) return logoPromise;
-  if (typeof window === "undefined") return null;
-
-  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-  logoPromise = fetch(`${window.location.origin}${base}/chu_logo_new.png`)
-    .then((r) => {
-      if (!r.ok) throw new Error(`logo HTTP ${r.status}`);
-      return r.blob();
-    })
-    .then(
-      (blob) =>
-        new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = () => reject(reader.error);
-          reader.readAsDataURL(blob);
-        }),
-    )
-    .then((d) => {
-      logoCache = d;
-      return d;
-    })
-    .catch(() => null);
-  return logoPromise;
-}
-
 export default function FeuilleImpression({
   titre,
   numero,
@@ -103,7 +74,15 @@ export default function FeuilleImpression({
   signatures,
   children,
 }: FeuilleImpressionProps) {
-  const [logo, setLogo] = useState<string | null>(logoCache);
+  // The établissement's identity + the header switches (Configuration ›
+  // Identité). `resoudreEntete` decides which lines exist and in what order —
+  // the same rules the DEP and Magasin sheets follow.
+  const entete = resoudreEntete(useBranding());
+
+  // Inline data-URL, not an <img src>: this sheet is printed as soon as it is
+  // painted, and an image still downloading when print() fires comes out
+  // blank. Cached in lib/brand, shared with the étiquettes.
+  const [logo, setLogo] = useState<string | null>(null);
   useEffect(() => {
     if (logo) return;
     let annule = false;
@@ -136,15 +115,27 @@ export default function FeuilleImpression({
       <div className="bon-entete">
         <div className="bon-entete-cote">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {logo ? <img src={logo} alt="CHU Mustapha" className="bon-logo" /> : <div className="bon-logo" />}
+          {entete.afficherLogo && logo ? (
+            <img src={logo} alt="" className="bon-logo" />
+          ) : (
+            <div className="bon-logo" />
+          )}
         </div>
 
-        <div className="bon-entete-centre">
-          <div className="bon-republique">République Algérienne Démocratique et Populaire</div>
-          <div className="bon-republique" dir="rtl">
-            المركز الاستشفائي الجامعي مصطفى
-          </div>
-          <div className="bon-republique">Centre Hospitalo-Universitaire Mustapha</div>
+        <div className="bon-entete-centre" style={{ textAlign: entete.alignement }}>
+          {entete.lignes.map((ligne, i) => (
+            <div
+              key={i}
+              dir={ligne.rtl ? "rtl" : undefined}
+              className={
+                ligne.kind === "republique" || ligne.kind === "nom" || ligne.kind === "nom_ar"
+                  ? "bon-republique"
+                  : "bon-service"
+              }
+            >
+              {ligne.text}
+            </div>
+          ))}
 
           {service && <div className="bon-service">{service}</div>}
           {localisation && <div className="bon-service">{localisation}</div>}
@@ -158,13 +149,17 @@ export default function FeuilleImpression({
                 <span className="bon-ancien"> (ancien n° {numeroLegacy})</span>
               )}
             </span>
-            <span>Alger le : {date}</span>
+            <span>{entete.ligneDate(date)}</span>
           </div>
         </div>
 
         <div className="bon-entete-cote">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {qr ? <img src={qr} alt="" className="bon-qr" /> : <div className="bon-qr bon-qr-vide" />}
+          {entete.afficherQr && qr ? (
+            <img src={qr} alt="" className="bon-qr" />
+          ) : (
+            <div className="bon-qr bon-qr-vide" />
+          )}
         </div>
       </div>
 

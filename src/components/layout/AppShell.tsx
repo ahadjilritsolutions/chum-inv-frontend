@@ -6,6 +6,7 @@ import AccessProvider from "@/lib/auth/AccessProvider";
 import NoRoleBanner from "./NoRoleBanner";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
+import { useBrandDocumentTitle } from "@/lib/brand";
 
 /**
  * Chrome shared by every authenticated page — the DEP frontend's shell,
@@ -24,6 +25,11 @@ import Navbar from "./Navbar";
  * socket open is what makes this user present to everyone else.
  */
 export default function AppShell({ children }: { children: ReactNode }) {
+  // "CHU Mustapha — Inventaire" in the tab, from the configured identity. The
+  // static metadata in layout.tsx cannot do it: the identity arrives over the
+  // wire, after the first paint.
+  useBrandDocumentTitle("Inventaire");
+
   const { user, loading } = useRequireSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 

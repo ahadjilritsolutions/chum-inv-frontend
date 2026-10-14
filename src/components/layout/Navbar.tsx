@@ -15,6 +15,7 @@ import ContextSwitcherModal from "@/components/modules/context/ContextSwitcherMo
 import { isRealSystem } from "@/lib/roles";
 import { useAccess } from "@/lib/auth/AccessProvider";
 import { ACCESS } from "@/lib/access";
+import { useBranding } from "@/lib/brand";
 import type { AuthUser } from "@/types/auth/auth";
 
 interface NavbarProps {
@@ -49,6 +50,7 @@ interface NavbarProps {
  * transformerait un registre incomplet en registre qui semble complet.
  */
 export default function Navbar({ user, onToggleSidebar }: NavbarProps) {
+  const branding = useBranding();
   const router = useRouter();
   const [switcherOpen, setSwitcherOpen] = useState(false);
 
@@ -124,7 +126,7 @@ export default function Navbar({ user, onToggleSidebar }: NavbarProps) {
         </button>
 
         <span className="hidden sm:inline text-white font-bold text-[14px] sm:text-[15px] tracking-wide whitespace-nowrap">
-          CHU Mustapha — Inventaire
+          {branding.nom_court} — Inventaire
         </span>
 
         <span className="text-white/30 font-light text-lg leading-none hidden sm:inline">
