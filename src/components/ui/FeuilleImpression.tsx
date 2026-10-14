@@ -68,7 +68,7 @@ async function chargerLogo(): Promise<string | null> {
   if (typeof window === "undefined") return null;
 
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-  logoPromise = fetch(`${window.location.origin}${base}/chu_logo_new.png`)
+  logoPromise = fetch(`${window.location.origin}${base}/chu_bab_el_oued_logo.png`)
     .then((r) => {
       if (!r.ok) throw new Error(`logo HTTP ${r.status}`);
       return r.blob();
@@ -136,15 +136,15 @@ export default function FeuilleImpression({
       <div className="bon-entete">
         <div className="bon-entete-cote">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {logo ? <img src={logo} alt="CHU Mustapha" className="bon-logo" /> : <div className="bon-logo" />}
+          {logo ? <img src={logo} alt="CHU Bab El Oued" className="bon-logo" /> : <div className="bon-logo" />}
         </div>
 
         <div className="bon-entete-centre">
           <div className="bon-republique">République Algérienne Démocratique et Populaire</div>
           <div className="bon-republique" dir="rtl">
-            المركز الاستشفائي الجامعي مصطفى
+            المركز الاستشفائي الجامعي باب الوادي
           </div>
-          <div className="bon-republique">Centre Hospitalo-Universitaire Mustapha</div>
+          <div className="bon-republique">Centre Hospitalo-Universitaire Bab El Oued</div>
 
           {service && <div className="bon-service">{service}</div>}
           {localisation && <div className="bon-service">{localisation}</div>}

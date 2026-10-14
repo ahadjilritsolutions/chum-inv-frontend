@@ -1,25 +1,25 @@
 @import "tailwindcss";
 
 /* ── Design tokens ─────────────────────────────────────────────────────────────
-   Identical to the DEP frontend's tokens. DEP and LIS are two applications of
-   the same SIH, and staff move between them in the same session — so the
-   chrome must be indistinguishable. Any change here has a twin in
-   chum-dep-frontend/src/app/globals.css. */
+   Same token names and layout as the DEP and LIS frontends. The colours were
+   moved off the old dark navy to the clear blue of the CHU Bab El Oued logo
+   (identical to chum-magasin-frontend), so they no longer match
+   chum-dep-frontend/src/app/globals.css value for value. */
 :root {
   --background: #ffffff;
   --foreground: #171717;
 
-  /* Sidebar dark gradient  (matches PHP .main-sidebar) */
-  --gradient-sidebar: linear-gradient(180deg, #0b1a2e 0%, #0f2847 60%, #0a3060 100%);
+  /* Sidebar gradient — the clear blue of the CHU Bab El Oued logo. */
+  --gradient-sidebar: linear-gradient(180deg, #1452a3 0%, #1a65c4 60%, #1e78d8 100%);
 
-  /* Navbar / brand gradient  (matches PHP .navbar + .brand-link) */
-  --gradient-brand: linear-gradient(135deg, #0b1a2e 0%, #0f2847 60%, #0891b2 100%);
+  /* Navbar / brand gradient — same blue, opening onto a lighter sky blue. */
+  --gradient-brand: linear-gradient(135deg, #1452a3 0%, #1a65c4 60%, #2b9fe0 100%);
 
   /* Application background behind the cards. */
   --app-bg: #f0f2f5;
 
-  /* Solid navy of table headers — the opaque end of --gradient-brand. */
-  --header-navy: #0f2847;
+  /* Solid blue of table headers — the middle stop of --gradient-brand. */
+  --header-navy: #1a65c4;
 }
 
 /* ── Tailwind theme ────────────────────────────────────────────────────────── */

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { ArrowLeft, Boxes, Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { Boxes, Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { withBasePath } from "@/lib/basePath";
 import { login } from "@/services/auth/auth";
@@ -22,7 +22,6 @@ import ServiceSelectionModal from "./ServiceSelectionModal";
 
 /** L'identifiant retenu d'une session à l'autre. JAMAIS le mot de passe. */
 const CLE_DERNIER_LOGIN = "inv_last_login";
-const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? "https://192.168.254.10";
 
 /**
  * Connexion — l'écran du magasin, panneau pour panneau.
@@ -146,35 +145,25 @@ export default function LoginForm() {
             className="relative hidden flex-col items-center justify-center p-10 text-white lg:flex"
             style={{ background: "var(--gradient-sidebar)" }}
           >
-            <a
-              href={PORTAL_URL}
-              className="absolute left-6 top-6 flex items-center gap-2 rounded-full border border-white/15
-                bg-white/10 px-4 py-2 text-sm font-medium text-white/90 backdrop-blur-sm
-                transition-all hover:bg-white/20"
-            >
-              <ArrowLeft size={15} />
-              Retour
-            </a>
-
             <div className="flex flex-col items-center text-center">
               <div className="relative mb-6 h-40 w-40">
                 {/* withBasePath : l'optimiseur de next/image ne préfixe PAS le
                     paramètre `url` du basePath, alors qu'il est lui-même monté
                     dessous. Sans cela, derrière nginx, il va chercher
-                    /chu_logo_new.png à la racine du serveur — qui appartient à
+                    /chu_bab_el_oued_logo.png à la racine du serveur — qui appartient à
                     une autre application — et rend un 400. */}
                 <Image
-                  src={withBasePath("/chu_logo_new.png")}
-                  alt="CHU Mustapha"
+                  src={withBasePath("/chu_bab_el_oued_logo.png")}
+                  alt="CHU Bab El Oued"
                   fill
                   priority
                   className="object-contain drop-shadow-2xl"
                 />
               </div>
 
-              <h1 className="text-3xl font-bold">CHU Mustapha</h1>
+              <h1 className="text-3xl font-bold">CHU Bab El Oued</h1>
               <h2 className="mt-1 text-xl font-semibold opacity-80" dir="rtl">
-                المركز الاستشفائي الجامعي مصطفى
+                المركز الاستشفائي الجامعي باب الوادي
               </h2>
               <p className="mt-3 text-sm text-white/70">
                 Gestion de l&apos;inventaire

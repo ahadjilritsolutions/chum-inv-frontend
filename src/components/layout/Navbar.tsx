@@ -124,7 +124,7 @@ export default function Navbar({ user, onToggleSidebar }: NavbarProps) {
         </button>
 
         <span className="hidden sm:inline text-white font-bold text-[14px] sm:text-[15px] tracking-wide whitespace-nowrap">
-          CHU Mustapha — Inventaire
+          CHU Bab El Oued — Inventaire
         </span>
 
         <span className="text-white/30 font-light text-lg leading-none hidden sm:inline">

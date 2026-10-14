@@ -29,7 +29,7 @@ export async function chargerLogo(): Promise<string | null> {
   if (typeof window === "undefined") return null;
 
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-  logoPromise = fetch(`${window.location.origin}${base}/chu_logo_new.png`)
+  logoPromise = fetch(`${window.location.origin}${base}/chu_bab_el_oued_logo.png`)
     .then((r) => {
       if (!r.ok) throw new Error(`logo HTTP ${r.status}`);
       return r.blob();

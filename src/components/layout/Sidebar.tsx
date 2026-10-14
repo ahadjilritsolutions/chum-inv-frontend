@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePortalUrl } from "@/lib/runtime-config";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
@@ -183,6 +184,7 @@ interface SidebarProps {
  * Mobile:  a 240px drawer that slides in from the left.
  */
 export default function Sidebar({ user, isOpen = false, onClose }: SidebarProps) {
+  const aideHref = usePortalUrl();
   const router = useRouter();
   // The rail shows what this session can reach. An administrator acting as
   // someone else keeps the admin.* codes, so Administration — the way back to
@@ -232,7 +234,7 @@ export default function Sidebar({ user, isOpen = false, onClose }: SidebarProps)
             {/* Aide et FAQ — external portal, opens in a new tab */}
             <li className="mt-2 border-t border-white/10">
               <a
-                href={aideFaqNavItem.href}
+                href={aideHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={onClose}
