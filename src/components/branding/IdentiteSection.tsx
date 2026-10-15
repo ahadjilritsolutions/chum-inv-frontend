@@ -348,8 +348,10 @@ function ApercuEntete({ branding, logo }: { branding: Branding; logo: string }) 
               key={i}
               dir={ligne.rtl ? "rtl" : undefined}
               className={
-                ligne.kind === "republique" || ligne.kind === "nom"
-                  ? "font-bold uppercase text-[8px] tracking-wide leading-snug"
+                ligne.kind === "nom"
+                  ? "font-bold uppercase text-[8px] tracking-wide leading-snug font-[family-name:var(--font-display)]"
+                  : ligne.kind === "republique"
+                    ? "font-bold uppercase text-[8px] tracking-wide leading-snug"
                   : ligne.kind === "nom_ar"
                     ? "font-bold text-[8px] leading-snug"
                     : "text-[8px] leading-snug"

@@ -128,9 +128,11 @@ export default function FeuilleImpression({
               key={i}
               dir={ligne.rtl ? "rtl" : undefined}
               className={
-                ligne.kind === "republique" || ligne.kind === "nom" || ligne.kind === "nom_ar"
-                  ? "bon-republique"
-                  : "bon-service"
+                ligne.kind === "nom"
+                  ? "bon-nom"
+                  : ligne.kind === "republique" || ligne.kind === "nom_ar"
+                    ? "bon-republique"
+                    : "bon-service"
               }
             >
               {ligne.text}

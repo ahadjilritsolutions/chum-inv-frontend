@@ -38,7 +38,13 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "Poppins", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-sans: "Outfit", "Segoe UI", system-ui, -apple-system, sans-serif;
+  /* Display face — reserved for brand moments (the établissement's
+     name on the login panel, the portal masthead, the printed
+     letterhead). NOT for UI text: a high-contrast serif at 12 px in a
+     table is unreadable. Opt in with
+     font-[family-name:var(--font-display)]. */
+  --font-display: "Playfair Display", Georgia, serif;
 }
 
 /* ── Base ──────────────────────────────────────────────────────────────────── */
@@ -49,7 +55,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: "Poppins", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-family: "Outfit", "Segoe UI", system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -145,6 +151,17 @@ body {
    The margin lives on the SHEET, not only in @page: the same markup is shown
    on screen in the preview, where @page does not apply, and a preview whose
    text ran to the paper's edge would be a preview of the wrong thing. */
+/* The établissement's name — the one line of the masthead set in the brand's
+   display face, matching the SIH logotype. The République line and the Arabic
+   line stay on the sans: Playfair has no Arabic glyphs, and a letterhead with
+   two competing serifs reads as a mistake. */
+.bon-nom {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: .2px;
+}
+
 .bon-feuille {
   width: 210mm;
   min-height: 297mm;
@@ -152,7 +169,7 @@ body {
   padding: 12mm;
   background: #fff;
   color: #000;
-  font-family: var(--font-poppins), system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-size: 12px;
   line-height: 1.4;
   box-sizing: border-box;

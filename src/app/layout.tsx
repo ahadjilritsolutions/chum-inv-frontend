@@ -1,15 +1,23 @@
 import type { Metadata } from "next";
-// Poppins is self-hosted through @fontsource (same weights as the other SIH
-// frontends), not fetched from Google Fonts: a hospital network is not
-// guaranteed to reach the outside, and globals.css names Poppins first in the
-// stack — so without these imports the whole app silently falls back to
-// Segoe UI. The typeface is part of the product's identity, not the
-// customer's, so it is bundled rather than configurable.
-import "@fontsource/poppins/300.css";
-import "@fontsource/poppins/400.css";
-import "@fontsource/poppins/500.css";
-import "@fontsource/poppins/600.css";
-import "@fontsource/poppins/700.css";
+// L&R IT Solutions' own type pairing (lritsolutions.com), the same one
+// cabinet-frontend uses and the one the SIH logotype is set in: Outfit for
+// body/UI text, Playfair Display for display — the serif "SIH" and the italic
+// "par L&R IT Solutions" are Playfair.
+//
+// Self-hosted through @fontsource, never fetched from Google Fonts: a hospital
+// network is not guaranteed to reach the outside, and globals.css names these
+// first in the stack — so without these imports the app silently falls back to
+// Segoe UI. The typefaces are part of the PRODUCT's identity, not the
+// customer's, so they are bundled rather than configurable.
+import "@fontsource/outfit/300.css";
+import "@fontsource/outfit/400.css";
+import "@fontsource/outfit/500.css";
+import "@fontsource/outfit/600.css";
+import "@fontsource/outfit/700.css";
+import "@fontsource/playfair-display/400.css";
+import "@fontsource/playfair-display/400-italic.css";
+import "@fontsource/playfair-display/600.css";
+import "@fontsource/playfair-display/700.css";
 import "./globals.css";
 
 // Fallback only. The real tab title is the établissement's own name, applied

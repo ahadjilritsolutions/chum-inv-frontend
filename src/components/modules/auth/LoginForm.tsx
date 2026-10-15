@@ -170,7 +170,7 @@ export default function LoginForm() {
                 />
               </div>
 
-              <h1 className="text-3xl font-bold">{branding.nom}</h1>
+              <h1 className="text-3xl font-bold font-[family-name:var(--font-display)]">{branding.nom}</h1>
               {branding.nom_ar && (
                 <h2 className="mt-1 text-xl font-semibold opacity-80" dir="rtl">
                   {branding.nom_ar}
