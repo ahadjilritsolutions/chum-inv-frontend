@@ -66,7 +66,7 @@ export default function ViewTabs<T extends string>({
                 "border-b-2 px-4 py-3 text-[12.5px] font-semibold transition-colors",
                 "cursor-pointer sm:gap-2 sm:px-5 sm:py-3.5 sm:text-[13px]",
                 isActive
-                  ? "border-cyan-500 bg-white text-[#0f2847]"
+                  ? "border-[var(--brand-or)] bg-white text-[var(--brand-navy-clair)]"
                   : "border-transparent text-slate-500 hover:bg-slate-50",
                 isAction && "text-cyan-600 hover:text-cyan-700",
               )}
