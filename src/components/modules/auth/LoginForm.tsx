@@ -182,7 +182,12 @@ export default function LoginForm() {
 
               <div
                 className="mt-6 inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold shadow-lg"
-                style={{ background: "linear-gradient(135deg,var(--brand-or),var(--brand-or-clair))" }}
+                style={{
+                  background: "linear-gradient(135deg,var(--brand-or),var(--brand-or-clair))",
+                  // Navy, not the inherited white: white on the softened gold is
+                  // 2.3:1, which is unreadable. Navy on it is 7.2:1.
+                  color: "var(--brand-navy)",
+                }}
               >
                 <Boxes size={14} />
                 Bureau des inventaires

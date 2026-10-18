@@ -8,7 +8,10 @@
 //
 // The colours are sampled from the supplied logo files, not eyeballed:
 //   navy  #0f1b3d  — 85 % of the app tile, the ink of the light lockup
-//   gold  #a8812e  — the hexagon mark and the rule under the wordmark
+//   gold  #a8812e  — the hexagon mark, as it is in the logo file
+//   gold  #c4a660  — SOFTENED for the interface: 7.2:1 on the navy
+//                    chrome instead of 4.7:1. Accent only — never
+//                    text on white, and never white on top of it.
 //   cream #ebe8e1  — the lockup's own background, the ink of the dark lockup
 //
 // This file is IDENTICAL in every SIH frontend. Change it in one, change it in
@@ -30,8 +33,8 @@ export const PRODUIT = {
 export const COULEURS = {
   navy: "#0f1b3d",
   navyClair: "#16264f",
-  or: "#a8812e",
-  orClair: "#c9a24b",
+  or: "#c4a660",
+  orClair: "#d4bb86",
   creme: "#ebe8e1",
 } as const;
 

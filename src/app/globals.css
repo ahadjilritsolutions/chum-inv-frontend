@@ -10,6 +10,12 @@
      tile and the ink of the light lockup, gold #a8812e is the hexagon mark,
      cream #ebe8e1 is the lockup's own background.
 
+     The gold is SOFTENED from the sampled #a8812e: against the navy chrome
+     it reads 7.2:1 instead of 4.7:1. The cost is contrast on white (2.3:1),
+     which is fine because gold is only ever an accent here — borders, rules,
+     active-tab underlines — and never text on a light background. Anything
+     placed ON the gold uses navy, not white.
+
      DEP, Inventaire, Magasin and the SIH portal all declare these same five
      values under these same names. They are one product and a user crosses
      between them inside a single session, so a change here has a twin in the
@@ -17,8 +23,8 @@
      per-customer: it is the vendor's identity, not the hospital's. */
   --brand-navy: #0f1b3d;
   --brand-navy-clair: #16264f;
-  --brand-or: #a8812e;
-  --brand-or-clair: #c9a24b;
+  --brand-or: #c4a660;
+  --brand-or-clair: #d4bb86;
   --brand-creme: #ebe8e1;
 
   /* Sidebar / navbar chrome. Both stay inside the navy range and let the gold
