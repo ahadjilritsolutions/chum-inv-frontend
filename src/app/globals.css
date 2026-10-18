@@ -27,21 +27,72 @@
   --brand-or-clair: #d4bb86;
   --brand-creme: #ebe8e1;
 
+  /* ── Couleurs pilotables ─────────────────────────────────────────────────
+     Les trois couleurs que l'établissement peut changer. Elles valent la
+     marque par défaut ; ThemeApplier les remplace au moment de l'exécution
+     avec ce que contient `sih_etablissement`. Tout ce qui est exprimé en
+     fonction d'elles suit automatiquement. */
+  --sih-primaire: var(--brand-navy);
+  --sih-secondaire: var(--brand-navy-clair);
+  --sih-accent: var(--brand-or);
+
+  /* Fond de page : le crème du logotype, éclairci pour de grandes surfaces
+     afin que les cartes blanches restent perçues comme posées dessus.
+     C'était le seul jeton de la marque que rien n'utilisait. */
+  --app-bg: #f4f2ed;
+
+  /* ── Échelle d'accent ────────────────────────────────────────────────────
+     Ces applications ont été écrites en traitant les classes cyan-* de
+     Tailwind comme LA couleur d'accent — 1 164 appels dans 154 fichiers pour
+     la seule DEP. Plutôt que de tous les reprendre, --color-cyan-* (plus bas)
+     pointe sur ces teintes de --sih-accent : les pas clairs tirent vers le
+     blanc pour les fonds, les pas foncés vers le noir pour que
+     `text-cyan-700` reste lisible (≈ 4,3:1 sur blanc).
+
+     À DÉCLARER EN :root, JAMAIS DANS @theme — Tailwind pré-résout les
+     color-mix() écrits dans @theme à la compilation, ce qui les fige en
+     littéraux et casse la réactivité au changement d'exécution. */
+  --accent-50:  color-mix(in srgb, white 85%, var(--sih-accent) 15%);
+  --accent-100: color-mix(in srgb, white 75%, var(--sih-accent) 25%);
+  --accent-200: color-mix(in srgb, white 68%, var(--sih-accent) 32%);
+  --accent-300: color-mix(in srgb, white 50%, var(--sih-accent) 50%);
+  --accent-400: color-mix(in srgb, white 25%, var(--sih-accent) 75%);
+  --accent-500: var(--sih-accent);
+  /* Les pas foncés sont un cran plus sombres que l'échelle de cabinet : avec
+     l'or adouci, `text-cyan-700` tombait à 4,28:1 sur blanc, juste sous le
+     seuil de 4,5 du texte courant. À 34 % il passe à 4,96:1 (4,43 sur le
+     fond crème), et 600 reste au-dessus de 3:1 pour les bordures et icônes. */
+  --accent-600: color-mix(in srgb, black 18%, var(--sih-accent) 82%);
+  --accent-700: color-mix(in srgb, black 34%, var(--sih-accent) 66%);
+  --accent-800: color-mix(in srgb, black 48%, var(--sih-accent) 52%);
+  --accent-900: color-mix(in srgb, black 60%, var(--sih-accent) 40%);
+
   /* Sidebar / navbar chrome. Both stay inside the navy range and let the gold
      do the accenting — a navy-to-gold sweep across a full-width bar reads as
      a warning colour rather than as a letterhead. */
-  --gradient-sidebar: linear-gradient(180deg, #0f1b3d 0%, #16264f 60%, #1b2c5e 100%);
-  --gradient-brand: linear-gradient(135deg, #0f1b3d 0%, #16264f 60%, #22356b 100%);
+  --gradient-sidebar: linear-gradient(180deg, var(--sih-primaire) 0%, var(--sih-secondaire) 60%, #1b2c5e 100%);
+  --gradient-brand: linear-gradient(135deg, var(--sih-primaire) 0%, var(--sih-secondaire) 60%, #22356b 100%);
 
-  /* Application background behind the cards. */
-  --app-bg: #f0f2f5;
 
   /* Solid navy of table headers — the middle stop of --gradient-brand. */
-  --header-navy: #16264f;
+  --header-navy: var(--sih-secondaire);
 }
 
 /* ── Tailwind theme ────────────────────────────────────────────────────────── */
 @theme inline {
+  /* Les utilitaires cyan-* deviennent l'accent de l'établissement. `inline`
+     indique à Tailwind de référencer la propriété telle quelle au lieu d'en
+     résoudre la valeur, ce qui garde la chaîne réactive de bout en bout. */
+  --color-cyan-50: var(--accent-50);
+  --color-cyan-100: var(--accent-100);
+  --color-cyan-200: var(--accent-200);
+  --color-cyan-300: var(--accent-300);
+  --color-cyan-400: var(--accent-400);
+  --color-cyan-500: var(--accent-500);
+  --color-cyan-600: var(--accent-600);
+  --color-cyan-700: var(--accent-700);
+  --color-cyan-800: var(--accent-800);
+  --color-cyan-900: var(--accent-900);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: "Outfit", "Segoe UI", system-ui, -apple-system, sans-serif;

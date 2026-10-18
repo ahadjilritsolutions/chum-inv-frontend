@@ -34,7 +34,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (loading || !user) {
-    return <div className="min-h-screen bg-[#f0f2f5]" />;
+    return <div className="min-h-screen bg-[var(--app-bg)]" />;
   }
 
   return (
@@ -42,7 +42,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     // every page and every button reads the same list instead of each
     // re-parsing localStorage on its own.
     <AccessProvider>
-      <div className="min-h-screen bg-[#f0f2f5]">
+      <div className="min-h-screen bg-[var(--app-bg)]">
         <Navbar user={user} onToggleSidebar={() => setSidebarOpen((v) => !v)} />
 
         {/* Mobile backdrop — tap to close the drawer */}
