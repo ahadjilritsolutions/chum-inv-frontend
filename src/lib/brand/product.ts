@@ -23,7 +23,7 @@
 export const PRODUIT = {
   nom: "Système d'Information Hospitalier",
   nom_court: "SIH",
-  slogan: "par L&R IT Solutions",
+  slogan: "La plateforme SIH full Web pour l'hôpital",  // tagline de lritsolutions.com
   editeur: "L&R IT Solutions",
 } as const;
 
@@ -31,11 +31,14 @@ export const PRODUIT = {
  *  CSS variables for styling and these constants only where a colour has to
  *  reach JavaScript (a canvas, a generated PDF, an inline <svg> fill). */
 export const COULEURS = {
-  navy: "#0f1b3d",
-  navyClair: "#16264f",
-  or: "#c4a660",
-  orClair: "#d4bb86",
-  creme: "#ebe8e1",
+  navy: "#0d1835",
+  navyClair: "#14234e",
+  navyPale: "#1e3270",
+  or: "#c9a84c",
+  orClair: "#e4c36e",
+  orFonce: "#9a7c30",
+  sable: "#f5f0e8",
+  texte: "#111827",
 } as const;
 
 /**

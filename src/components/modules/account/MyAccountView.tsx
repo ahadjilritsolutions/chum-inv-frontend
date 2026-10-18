@@ -204,7 +204,7 @@ export default function MyAccountView() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className={inputCls}
-              placeholder="prenom.nom@chum.dz"
+              placeholder="prenom.nom@exemple.dz"
             />
           </Field>
 

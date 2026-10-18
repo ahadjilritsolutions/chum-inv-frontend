@@ -203,7 +203,7 @@ export default function CompteFormModal({
               <TextInput
                 value={f.login ?? ""}
                 onChange={(e) => set("login", e.target.value)}
-                placeholder="prenom.nom@chum.dz"
+                placeholder="prenom.nom@exemple.dz"
               />
             </Field>
           </div>

@@ -3,29 +3,33 @@
 /* ── Design tokens ───────────────────────────────────────────────────────── */
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: var(--brand-texte);
 
-  /* ── L&R IT Solutions brand palette ──────────────────────────────────────────
-     Sampled from the logo files, not eyeballed: navy #0f1b3d is 85 % of the app
-     tile and the ink of the light lockup, gold #a8812e is the hexagon mark,
-     cream #ebe8e1 is the lockup's own background.
+  /* ── Palette L&R, telle que publiée ──────────────────────────────────────
+     Relevée sur lritsolutions.com (ses propres variables CSS), et non plus
+     échantillonnée sur les PNG du logo — l'échantillonnage donnait #0f1b3d
+     et #a8812e, proches mais pas les valeurs officielles. cabinet-frontend
+     utilise déjà les mêmes.
 
-     The gold is SOFTENED from the sampled #a8812e: against the navy chrome
-     it reads 7.2:1 instead of 4.7:1. The cost is contrast on white (2.3:1),
-     which is fine because gold is only ever an accent here — borders, rules,
-     active-tab underlines — and never text on a light background. Anything
-     placed ON the gold uses navy, not white.
+         --nv  #14234e   --nv2 #0d1835   --nv3 #1e3270
+         --gd  #c9a84c   --gd2 #e4c36e   --gd3 #9a7c30
+         --sd  #f5f0e8   --sd2 #ece5d4   --sd3 #e2d9c6
 
-     DEP, Inventaire, Magasin and the SIH portal all declare these same five
-     values under these same names. They are one product and a user crosses
-     between them inside a single session, so a change here has a twin in the
-     other three. Unlike the établissement's name and logo, the palette is NOT
-     per-customer: it is the vendor's identity, not the hospital's. */
-  --brand-navy: #0f1b3d;
-  --brand-navy-clair: #16264f;
-  --brand-or: #c4a660;
-  --brand-or-clair: #d4bb86;
-  --brand-creme: #ebe8e1;
+     Le sable #f5f0e8 est le fond de page du site lui-même : c'est lui que
+     --app-bg reprend, plutôt qu'un gris générique. */
+  --brand-navy: #0d1835;
+  --brand-navy-clair: #14234e;
+  --brand-navy-pale: #1e3270;
+  --brand-or: #c9a84c;
+  --brand-or-clair: #e4c36e;
+  --brand-or-fonce: #9a7c30;
+  --brand-sable: #f5f0e8;
+  --brand-sable-2: #ece5d4;
+  --brand-sable-3: #e2d9c6;
+  --brand-texte: #111827;
+  --brand-texte-2: #4b5563;
+  --brand-texte-3: #9ca3af;
+  --brand-bordure: rgba(20, 35, 78, .10);
 
   /* ── Couleurs pilotables ─────────────────────────────────────────────────
      Les trois couleurs que l'établissement peut changer. Elles valent la
@@ -36,10 +40,9 @@
   --sih-secondaire: var(--brand-navy-clair);
   --sih-accent: var(--brand-or);
 
-  /* Fond de page : le crème du logotype, éclairci pour de grandes surfaces
-     afin que les cartes blanches restent perçues comme posées dessus.
-     C'était le seul jeton de la marque que rien n'utilisait. */
-  --app-bg: #f4f2ed;
+  /* Fond de page : le sable du site, qui est littéralement son
+     `body{background:var(--sd)}`. Les cartes restent blanches. */
+  --app-bg: var(--brand-sable);
 
   /* ── Échelle d'accent ────────────────────────────────────────────────────
      Ces applications ont été écrites en traitant les classes cyan-* de
@@ -70,8 +73,8 @@
   /* Sidebar / navbar chrome. Both stay inside the navy range and let the gold
      do the accenting — a navy-to-gold sweep across a full-width bar reads as
      a warning colour rather than as a letterhead. */
-  --gradient-sidebar: linear-gradient(180deg, var(--sih-primaire) 0%, var(--sih-secondaire) 60%, #1b2c5e 100%);
-  --gradient-brand: linear-gradient(135deg, var(--sih-primaire) 0%, var(--sih-secondaire) 60%, #22356b 100%);
+  --gradient-sidebar: linear-gradient(180deg, var(--sih-primaire) 0%, var(--sih-secondaire) 60%, var(--brand-navy-pale) 100%);
+  --gradient-brand: linear-gradient(135deg, var(--sih-primaire) 0%, var(--sih-secondaire) 60%, var(--brand-navy-pale) 100%);
 
 
   /* Solid navy of table headers — the middle stop of --gradient-brand. */
