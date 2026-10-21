@@ -26,6 +26,20 @@ export interface EnteteConfig {
   texte: string | null;
 }
 
+/**
+ * Les trois teintes que l'établissement pilote.
+ *
+ * `null` = « garder celle du produit ». Ce n'est PAS la couleur L&R
+ * recopiée : il faut pouvoir distinguer un choix d'une absence de choix,
+ * sinon faire évoluer la palette produit ne rattraperait jamais les
+ * installations déjà livrées.
+ */
+export interface Couleurs {
+  primaire: string | null;
+  secondaire: string | null;
+  accent: string | null;
+}
+
 export interface BrandingIdentite {
   nom: string;
   nom_court: string;
@@ -41,6 +55,9 @@ export interface BrandingIdentite {
 
 export interface Branding extends BrandingIdentite {
   entete: EnteteConfig;
+  /** Indépendant de `par_defaut` : on peut nommer l'établissement sans
+   *  toucher à ses couleurs, et l'inverse. */
+  couleurs: Couleurs;
   /** Backend-relative path to the uploaded logo, already cache-busted, or
    *  null when none was uploaded. Resolve it with `logoSrc()` — never put it
    *  in an `src` directly, it is relative to the API, not to the page. */
@@ -88,6 +105,7 @@ export const BRANDING_DEFAUT: Branding = {
   email: null,
   site_web: null,
   entete: ENTETE_DEFAUT,
+  couleurs: { primaire: null, secondaire: null, accent: null },
   logo_url: null,
   par_defaut: true,
 };

@@ -19,6 +19,10 @@ import "@fontsource/playfair-display/400-italic.css";
 import "@fontsource/playfair-display/600.css";
 import "@fontsource/playfair-display/700.css";
 import "./globals.css";
+// Pose les couleurs de l'établissement sur <html> dès que le branding est
+// chargé ; sans rendu propre. Monté ici pour couvrir TOUTES les pages,
+// y compris l'écran de connexion qui vit hors du shell applicatif.
+import ThemeApplier from "@/components/branding/ThemeApplier";
 
 // Fallback only. The real tab title is the établissement's own name, applied
 // by useBrandDocumentTitle() once the identity has loaded — naming a hospital
@@ -41,7 +45,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="fr">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <ThemeApplier />
+        {children}
+      </body>
     </html>
   );
 }

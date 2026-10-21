@@ -12,6 +12,7 @@ export {
   ENTETE_DEFAUT,
   type Branding,
   type BrandingIdentite,
+  type Couleurs,
   type BrandingUpdate,
   type EnteteConfig,
 } from "./types";
