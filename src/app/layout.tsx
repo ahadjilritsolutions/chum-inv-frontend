@@ -46,6 +46,10 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className="antialiased">
+        {/* Réglages d'exécution (public/config.js) : chargé avant le rendu
+            de l'application pour que window.__SIH_CONFIG__ existe quand les
+            composants le lisent. Fichier ordinaire, éditable sur le serveur. */}
+        <script src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/config.js`} />
         <ThemeApplier />
         {children}
       </body>

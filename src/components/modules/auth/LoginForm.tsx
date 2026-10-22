@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePortalUrl } from "@/lib/runtime-config";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Boxes, Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,7 +22,6 @@ import ServiceSelectionModal from "./ServiceSelectionModal";
 
 /** L'identifiant retenu d'une session à l'autre. JAMAIS le mot de passe. */
 const CLE_DERNIER_LOGIN = "inv_last_login";
-const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? "https://192.168.254.10";
 
 /**
  * Connexion — l'écran du magasin, panneau pour panneau.
@@ -58,6 +58,7 @@ const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? "https://192.168.254.10
  * Voir lib/auth/landing.ts.
  */
 export default function LoginForm() {
+  const portail = usePortalUrl();
   const branding = useBranding();
   const router = useRouter();
   const params = useSearchParams();
@@ -146,15 +147,21 @@ export default function LoginForm() {
             className="relative hidden flex-col items-center justify-center p-10 text-white lg:flex"
             style={{ background: "var(--gradient-sidebar)" }}
           >
-            <a
-              href={PORTAL_URL}
-              className="absolute left-6 top-6 flex items-center gap-2 rounded-full border border-white/15
-                bg-white/10 px-4 py-2 text-sm font-medium text-white/90 backdrop-blur-sm
-                transition-all hover:bg-white/20"
-            >
-              <ArrowLeft size={15} />
-              Retour
-            </a>
+            {/* Retour vers le portail SIH, lu à l'exécution (public/config.js,
+                sinon NEXT_PUBLIC_PORTAL_URL). Pas de portail configuré → pas
+                de bouton : une installation autonome n'a nulle part où
+                revenir, et un lien mort vaut moins que pas de lien. */}
+            {portail && (
+              <a
+                href={portail}
+                className="absolute left-6 top-6 flex items-center gap-2 rounded-full border border-white/15
+                  bg-white/10 px-4 py-2 text-sm font-medium text-white/90 backdrop-blur-sm
+                  transition-all hover:bg-white/20"
+              >
+                <ArrowLeft size={15} />
+                Retour
+              </a>
+            )}
 
             <div className="flex flex-col items-center text-center">
               {/* Le logo de l'établissement s'il en a téléversé un, sinon la

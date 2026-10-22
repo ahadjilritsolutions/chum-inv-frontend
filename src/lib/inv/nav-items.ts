@@ -101,7 +101,8 @@ export function visibleNavItems(
 /** External help portal, pinned above the logout row (as in the DEP). */
 export const aideFaqNavItem = {
   label: "Aide et FAQ",
-  href: process.env.NEXT_PUBLIC_PORTAL_URL ?? "https://192.168.254.10",
+  /** Chemin RELATIF au portail ; vide = la racine du portail. */
+  chemin: "",
   icon: HelpCircle,
   ...palette.slate,
 };

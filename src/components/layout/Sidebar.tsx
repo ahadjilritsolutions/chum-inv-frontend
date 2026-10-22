@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePortalUrl } from "@/lib/runtime-config";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
@@ -183,6 +184,11 @@ interface SidebarProps {
  * Mobile:  a 240px drawer that slides in from the left.
  */
 export default function Sidebar({ user, isOpen = false, onClose }: SidebarProps) {
+  // Le portail est résolu à l'exécution ; le chemin d'aide est relatif à
+  // lui. Pas de portail configuré → pas d'entrée d'aide.
+  const portail = usePortalUrl();
+  const aideFaqHref = portail ? `${portail.replace(/\/+$/, "")}${aideFaqNavItem.chemin}` : "";
+
   const router = useRouter();
   // The rail shows what this session can reach. An administrator acting as
   // someone else keeps the admin.* codes, so Administration — the way back to
@@ -229,10 +235,12 @@ export default function Sidebar({ user, isOpen = false, onClose }: SidebarProps)
               <NavNode key={item.label} item={item} onClose={onClose} />
             ))}
 
-            {/* Aide et FAQ — external portal, opens in a new tab */}
-            <li className="mt-2 border-t border-white/10">
+            {/* Aide et FAQ — vit sur le portail, donc affiché seulement
+                quand l'installation en a un. S'ouvre dans un onglet. */}
+            {aideFaqHref && (
+              <li className="mt-2 border-t border-white/10">
               <a
-                href={aideFaqNavItem.href}
+                href={aideFaqHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={onClose}
@@ -248,6 +256,7 @@ export default function Sidebar({ user, isOpen = false, onClose }: SidebarProps)
                 </span>
               </a>
             </li>
+            )}
 
             {/* Logout */}
             <li className="border-t border-white/10">
