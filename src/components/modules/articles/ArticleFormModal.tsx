@@ -7,8 +7,11 @@ import { ACCESS } from "@/lib/access";
 import {
   creerArticle, creerGroupe, getArticle, modifierArticle,
 } from "@/services/inv/articles";
-import { getFamilles, getLocalisations, getSousFamilles } from "@/services/inv/reference";
-import type { ReferenceFeed, Lookup, LocalisationOption } from "@/types/inv/reference";
+import { getCatalogue, getLocalisations } from "@/services/inv/reference";
+import SearchSelect from "@/components/ui/SearchSelect";
+import type {
+  ReferenceFeed, LocalisationOption, CatalogueComplet,
+} from "@/types/inv/reference";
 
 /**
  * Create or edit an article.
@@ -34,10 +37,31 @@ import type { ReferenceFeed, Lookup, LocalisationOption } from "@/types/inv/refe
  * La voie registre n'apparaît qu'avec le droit correspondant : la proposer à
  * qui ne l'a pas donnerait un formulaire qui échoue à l'envoi.
  *
- * The three-level catalogue cascades: choosing a category narrows the
- * families, choosing a family narrows the sub-families. Picking a sub-family
- * fills the designation, exactly as the legacy's `setlib()` did — it is what
- * keeps 2 930 designations consistent instead of free text.
+ * ── LE CATALOGUE SE PARCOURT DANS LES DEUX SENS ─────────────────────────────
+ * Il descendait : catégorie, puis famille, puis sous-famille. Or à la saisie
+ * on part du BAS — l'agent sait qu'il tient une « CHAISE », pas dans quelle
+ * catégorie le catalogue l'a rangée. Il devait deviner deux niveaux pour
+ * atteindre le seul qu'il connaissait.
+ *
+ * Les trois listes sont donc ouvertes d'emblée et REMONTENT : choisir une
+ * sous-famille remplit sa famille et sa catégorie, choisir une famille remplit
+ * sa catégorie. Rien n'est verrouillé — on peut toujours commencer par le
+ * haut, et corriger ce qui a été rempli.
+ *
+ * Choisir une sous-famille remplit aussi la désignation, exactement comme le
+ * `setlib()` du legacy : c'est ce qui garde 2 930 désignations homogènes au
+ * lieu de texte libre.
+ *
+ * ── LES TROIS NIVEAUX SONT OBLIGATOIRES ─────────────────────────────────────
+ * La base ne l'impose pas — 2 932 lignes reprises s'en passent, et ajouter la
+ * contrainte aurait refusé la migration. L'écran, lui, l'exige : un article
+ * saisi aujourd'hui sans catégorie n'apparaît dans aucun filtre, dans aucune
+ * statistique, et c'est la personne qui le cherchera dans six mois qui paiera
+ * les dix secondes épargnées à la saisie.
+ *
+ * ── LA LOCALISATION PASSE PAR LE SERVICE ────────────────────────────────────
+ * Une seule liste de 286 locaux ne se parcourt pas. On choisit d'abord le
+ * service — ce que l'agent sait toujours — et la liste se réduit à ses locaux.
  */
 export default function ArticleFormModal({
   mode, id, ref: reference, onClose, onSaved,
@@ -53,9 +77,11 @@ export default function ArticleFormModal({
   /** La voie choisie. Sans le droit, la question ne se pose pas. */
   const [voie, setVoie] = useState<"physique" | "registre">("physique");
   const [f, setF] = useState<Record<string, unknown>>({});
-  const [familles, setFamilles] = useState<Lookup[]>([]);
-  const [sousFamilles, setSousFamilles] = useState<Lookup[]>([]);
+  const [cat, setCat] = useState<CatalogueComplet | null>(null);
   const [locs, setLocs] = useState<LocalisationOption[]>([]);
+  /** Le service qui filtre la liste des locaux. Jamais envoyé au serveur :
+   *  c'est la LOCALISATION qui porte le service, pas l'article. */
+  const [service, setService] = useState<number | null>(null);
   const [nombre, setNombre] = useState(2);
   const [busy, setBusy] = useState(false);
   const [chargement, setChargement] = useState(false);
@@ -67,6 +93,7 @@ export default function ArticleFormModal({
     if (!mode) return;
     setErreur(null); setBusy(false); setNombre(2); setVoie("physique");
     void getLocalisations().then(setLocs).catch(() => setLocs([]));
+    void getCatalogue().then(setCat).catch(() => setCat(null));
     if (mode === "modifier" && id) {
       setChargement(true);
       getArticle(id)
@@ -92,22 +119,98 @@ export default function ArticleFormModal({
         .finally(() => setChargement(false));
     } else {
       setF({});
+      setService(null);
     }
   }, [mode, id]);
 
-  // Cascades. Each depends only on the level above it, so changing a category
-  // clears what is now meaningless rather than leaving a stale family behind.
+  // En modification, le service se déduit de la localisation enregistrée —
+  // sinon la liste des locaux s'ouvrirait vide sur un article qui en a un.
   useEffect(() => {
-    const c = f.id_categorie as number | undefined;
-    if (!c) { setFamilles([]); return; }
-    void getFamilles(Number(c)).then(setFamilles).catch(() => setFamilles([]));
-  }, [f.id_categorie]);
+    const idLoc = Number(f.id_localisation ?? 0);
+    if (!idLoc || service !== null) return;
+    const svc = locs.find((l) => l.id_localisation === idLoc)?.id_service;
+    if (svc) setService(svc);
+  }, [f.id_localisation, locs, service]);
 
-  useEffect(() => {
-    const fa = f.id_famille as number | undefined;
-    if (!fa) { setSousFamilles([]); return; }
-    void getSousFamilles(Number(fa)).then(setSousFamilles).catch(() => setSousFamilles([]));
-  }, [f.id_famille]);
+  // ── LES TROIS NIVEAUX, FILTRÉS MAIS JAMAIS FERMÉS ───────────────────────
+  //
+  // Une famille se restreint à sa catégorie SI une catégorie est choisie, et
+  // propose les 93 sinon. Pas de liste vide en attendant le niveau du dessus :
+  // c'est ce qui obligeait à descendre dans l'ordre.
+  const famillesVisibles = useMemo(() => {
+    const toutes = cat?.familles ?? [];
+    const c = Number(f.id_categorie ?? 0);
+    const base = c ? toutes.filter((x) => x.id_categorie === c) : toutes;
+    return base.map((x) => ({
+      id: x.id,
+      libelle: x.libelle,
+      detail: c ? null : nomCategorie(cat, x.id_categorie),
+    }));
+  }, [cat, f.id_categorie]);
+
+  const sousFamillesVisibles = useMemo(() => {
+    const toutes = cat?.sous_familles ?? [];
+    const fa = Number(f.id_famille ?? 0);
+    const c = Number(f.id_categorie ?? 0);
+    const base = fa
+      ? toutes.filter((x) => x.id_famille === fa)
+      : c
+        ? toutes.filter((x) => x.id_categorie === c)
+        : toutes;
+    return base.map((x) => ({
+      id: x.id,
+      libelle: x.libelle,
+      // Sans famille choisie, le parent lève l'ambiguïté : « CHAISE » existe
+      // sous plusieurs familles, et rien d'autre ne les distingue à l'écran.
+      detail: fa ? null : nomFamille(cat, x.id_famille),
+    }));
+  }, [cat, f.id_famille, f.id_categorie]);
+
+  /** Les locaux du service choisi. Sans service, rien : 286 ne se lisent pas. */
+  const locsVisibles = useMemo(
+    () => (service ? locs.filter((l) => l.id_service === service) : []),
+    [locs, service],
+  );
+
+  // ── LA REMONTÉE ─────────────────────────────────────────────────────────
+  // Choisir une sous-famille pose sa famille et sa catégorie ; choisir une
+  // famille pose sa catégorie. On écrase ce qui est incohérent, pas ce qui
+  // est déjà juste — sinon corriger la catégorie à la main serait impossible.
+  const choisirSousFamille = (v: number | null) => {
+    setF((p) => {
+      const n: Record<string, unknown> = { ...p, id_sous_famille: v };
+      const sf = cat?.sous_familles.find((x) => x.id === v);
+      if (sf) {
+        n.id_famille = sf.id_famille;
+        n.id_categorie = sf.id_categorie;
+        const lib = sf.libelle;
+        if (lib && !p.designation) n.designation = lib;
+      }
+      return n;
+    });
+  };
+
+  const choisirFamille = (v: number | null) => {
+    setF((p) => {
+      const n: Record<string, unknown> = { ...p, id_famille: v };
+      const fa = cat?.familles.find((x) => x.id === v);
+      if (fa) n.id_categorie = fa.id_categorie;
+      // Une sous-famille qui n'appartient plus à la famille choisie n'a plus
+      // de sens : la garder enverrait un trio incohérent au serveur.
+      const sf = cat?.sous_familles.find((x) => x.id === Number(p.id_sous_famille ?? 0));
+      if (sf && v && sf.id_famille !== v) n.id_sous_famille = null;
+      return n;
+    });
+  };
+
+  const choisirCategorie = (v: number | null) => {
+    setF((p) => {
+      const n: Record<string, unknown> = { ...p, id_categorie: v };
+      const fa = cat?.familles.find((x) => x.id === Number(p.id_famille ?? 0));
+      if (fa && v && fa.id_categorie !== v) { n.id_famille = null; n.id_sous_famille = null; }
+      return n;
+    });
+  };
 
   /**
    * Le préfixe que `setcod()` posait : le code du service de la localisation
@@ -187,8 +290,16 @@ export default function ArticleFormModal({
     voie !== "registre" ||
     mode === "modifier" ||
     /^[0-9A-Za-z]{1,4}-[0-9]{1,6}$/.test(String(f.num_inventaire ?? ""));
+  // Les trois niveaux du catalogue sont exigés ICI et non en base : la
+  // contrainte aurait refusé les 2 932 lignes reprises, qui sont pourtant
+  // légitimes. Ce qui entre à partir de maintenant, lui, est complet.
   const valide =
-    Boolean(f.designation) && Boolean(f.id_localisation) && numeroComplet;
+    Boolean(f.designation) &&
+    Boolean(f.id_localisation) &&
+    Boolean(f.id_categorie) &&
+    Boolean(f.id_famille) &&
+    Boolean(f.id_sous_famille) &&
+    numeroComplet;
 
   return (
     <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/60 p-4">
@@ -303,74 +414,67 @@ export default function ArticleFormModal({
                 </Champ>
               )}
 
+              {/* ── OÙ : le service d'abord, le local ensuite ─────────────
+                  286 locaux dans une seule liste ne se parcourent pas. Le
+                  service, lui, est ce que l'agent sait toujours. */}
+              <Champ label="Service" obligatoire>
+                <SearchSelect
+                  options={(reference?.services ?? []).map((sv) => ({
+                    id: sv.id_service, libelle: sv.lib_service ?? `Service ${sv.id_service}`,
+                  }))}
+                  valeur={service}
+                  onChange={(v) => {
+                    setService(v);
+                    // Le local appartenait à l'ancien service : le garder
+                    // enverrait un article dans un service qu'on vient de
+                    // quitter.
+                    set("id_localisation", null);
+                  }}
+                  placeholder="— choisir un service —"
+                />
+              </Champ>
+
               <Champ label="Localisation" obligatoire>
-                <select
-                  value={String(f.id_localisation ?? "")}
-                  onChange={(e) => set("id_localisation", Number(e.target.value) || null)}
-                  className={input}
-                >
-                  <option value="">— choisir —</option>
-                  {locs.map((l) => (
-                    <option key={l.id_localisation} value={l.id_localisation}>
-                      {l.libelle}
-                    </option>
-                  ))}
-                </select>
+                <SearchSelect
+                  options={locsVisibles.map((l) => ({
+                    id: l.id_localisation, libelle: l.libelle,
+                  }))}
+                  valeur={(f.id_localisation as number) ?? null}
+                  onChange={(v) => set("id_localisation", v)}
+                  disabled={!service}
+                  placeholder={service ? "— choisir un local —" : "choisir un service d'abord"}
+                  vide="Aucun local dans ce service"
+                />
               </Champ>
 
-              <Champ label="Catégorie">
-                <select
-                  value={String(f.id_categorie ?? "")}
-                  onChange={(e) => {
-                    set("id_categorie", Number(e.target.value) || null);
-                    set("id_famille", null);
-                    set("id_sous_famille", null);
-                  }}
-                  className={input}
-                >
-                  <option value="">—</option>
-                  {(reference?.categories ?? []).map((c) => (
-                    <option key={c.id} value={c.id}>{c.libelle}</option>
-                  ))}
-                </select>
+              {/* ── LE CATALOGUE — les trois niveaux, dans n'importe quel ordre */}
+              <Champ label="Catégorie" obligatoire>
+                <SearchSelect
+                  options={(cat?.categories ?? []).map((c) => ({
+                    id: c.id, libelle: c.libelle,
+                  }))}
+                  valeur={(f.id_categorie as number) ?? null}
+                  onChange={choisirCategorie}
+                  placeholder="— choisir —"
+                />
               </Champ>
 
-              <Champ label="Famille">
-                <select
-                  value={String(f.id_famille ?? "")}
-                  onChange={(e) => {
-                    set("id_famille", Number(e.target.value) || null);
-                    set("id_sous_famille", null);
-                  }}
-                  disabled={familles.length === 0}
-                  className={input}
-                >
-                  <option value="">—</option>
-                  {familles.map((c) => (
-                    <option key={c.id} value={c.id}>{c.libelle}</option>
-                  ))}
-                </select>
+              <Champ label="Famille" obligatoire>
+                <SearchSelect
+                  options={famillesVisibles}
+                  valeur={(f.id_famille as number) ?? null}
+                  onChange={choisirFamille}
+                  placeholder="— choisir —"
+                />
               </Champ>
 
-              <Champ label="Sous-famille">
-                <select
-                  value={String(f.id_sous_famille ?? "")}
-                  onChange={(e) => {
-                    const v = Number(e.target.value) || null;
-                    set("id_sous_famille", v);
-                    // Fills the designation from the sub-family, as the legacy
-                    // setlib() did — that is what keeps designations uniform.
-                    const lib = sousFamilles.find((s) => s.id === v)?.libelle;
-                    if (lib && !f.designation) set("designation", lib);
-                  }}
-                  disabled={sousFamilles.length === 0}
-                  className={input}
-                >
-                  <option value="">—</option>
-                  {sousFamilles.map((c) => (
-                    <option key={c.id} value={c.id}>{c.libelle}</option>
-                  ))}
-                </select>
+              <Champ label="Sous-famille" obligatoire pleineLargeur>
+                <SearchSelect
+                  options={sousFamillesVisibles}
+                  valeur={(f.id_sous_famille as number) ?? null}
+                  onChange={choisirSousFamille}
+                  placeholder="— choisir — (remplit la famille et la catégorie)"
+                />
               </Champ>
 
               <Champ label="Désignation" obligatoire pleineLargeur>
@@ -459,7 +563,7 @@ export default function ArticleFormModal({
               ? ""
               : !numeroComplet
                 ? "Complétez le numéro d'inventaire (ex. 109-001467)."
-                : "Désignation et localisation sont obligatoires."}
+                : "Service, localisation, catégorie, famille, sous-famille et désignation sont obligatoires."}
           </span>
           <div className="flex gap-2">
             <button
@@ -530,4 +634,14 @@ function Champ({
       {children}
     </div>
   );
+}
+
+/** Le libellé d'une catégorie, pour la seconde ligne d'une option. */
+function nomCategorie(cat: CatalogueComplet | null, id: number): string | null {
+  return cat?.categories.find((c) => c.id === id)?.libelle ?? null;
+}
+
+/** Le libellé d'une famille, idem. */
+function nomFamille(cat: CatalogueComplet | null, id: number): string | null {
+  return cat?.familles.find((x) => x.id === id)?.libelle ?? null;
 }

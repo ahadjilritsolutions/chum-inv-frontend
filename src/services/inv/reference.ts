@@ -1,5 +1,6 @@
 import { apiGet, withQuery } from "@/lib/api/http";
 import type {
+  CatalogueComplet,
   LocalisationOption,
   Lookup,
   ReferenceFeed,
@@ -25,3 +26,13 @@ export const getSousFamilles = (famille?: number): Promise<Lookup[]> =>
 /** Already narrowed to the session's service scope by the API. */
 export const getLocalisations = (service?: number): Promise<LocalisationOption[]> =>
   apiGet<LocalisationOption[]>(withQuery("/api/reference/localisations", { service }));
+
+/**
+ * Le catalogue entier en UN appel, parents compris.
+ *
+ * A preferer a getFamilles/getSousFamilles des que le formulaire doit remonter
+ * la hierarchie : 809 lignes au CHU Mustapha, contre un aller-retour par
+ * niveau et l obligation de descendre dans l ordre.
+ */
+export const getCatalogue = (): Promise<CatalogueComplet> =>
+  apiGet<CatalogueComplet>("/api/reference/catalogue");

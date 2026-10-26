@@ -15,15 +15,15 @@ export interface NavItem {
   /** Access required to see this entry. Absent = any signed-in session. */
   access?: AccessCode;
   /**
-   * Reservee au role santeplus 100 (Admin), en PLUS de son droit d'acces.
+   * Visible dès qu'UN de ces droits est détenu.
    *
-   * Le droit seul ne suffisait pas : six des sept inv_roles portent au moins un
-   * code config.*, donc l'entree s'affichait pour presque tout le monde alors
-   * que la page regle les comptes, les roles et les referentiels. On y entre
-   * desormais parce qu'on est administrateur, pas parce qu'on a herite d'une
-   * case a cocher.
+   * Pour un écran à onglets qui s'ouvre dès qu'une seule section est permise.
+   * Avec un `access` unique, l'entrée était accordée sur le droit des COMPTES —
+   * le plus restrictif des quatre — si bien qu'un gestionnaire de service
+   * pouvant régler les locaux ne voyait jamais le lien vers une page qui
+   * l'aurait pourtant laissé entrer.
    */
-  adminSeul?: boolean;
+  accessAny?: readonly AccessCode[];
   children?: NavItem[];
 }
 
@@ -75,9 +75,17 @@ export const navItems: readonly NavItem[] = [
   // n'oblige pas à régler les rôles.
   {
     label: "Configuration", href: "/configuration", icon: Settings,
+    // Les quatre onglets, et non le seul droit des comptes : la page s'ouvre
+    // dès que l'un d'eux est accordé, l'entrée doit suivre la même règle.
+    accessAny: [
+      ACCESS.CONFIG_COMPTES_VOIR,
+      ACCESS.CONFIG_ROLES_VOIR,
+      ACCESS.CONFIG_CATALOGUE_VOIR,
+      ACCESS.CONFIG_STRUCTURE_VOIR,
+    ],
     // Le droit le plus large des quatre onglets : la page s''ouvre dès qu''un
     // seul est permis, et gérer les comptes n''oblige pas à gérer les locaux.
-    ...palette.amber, access: ACCESS.CONFIG_COMPTES_VOIR, adminSeul: true,
+    ...palette.amber,
   },
 ];
 
@@ -90,12 +98,11 @@ export const navItems: readonly NavItem[] = [
  */
 export function visibleNavItems(
   can: (...codes: AccessCode[]) => boolean,
-  estAdmin = false,
 ): NavItem[] {
-  return navItems.filter(
-    (i) =>
-      (i.access === undefined || can(i.access)) && (!i.adminSeul || estAdmin),
-  );
+  return navItems.filter((i) => {
+    if (i.accessAny) return i.accessAny.some((c) => can(c));
+    return i.access === undefined || can(i.access);
+  });
 }
 
 /** External help portal, pinned above the logout row (as in the DEP). */

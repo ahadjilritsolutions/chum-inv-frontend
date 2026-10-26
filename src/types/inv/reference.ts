@@ -41,3 +41,19 @@ export interface LocalisationOption {
   id_service: number;
   lib_service?: string | null;
 }
+
+/**
+ * Le catalogue entier, a plat, AVEC les liens de parente.
+ *
+ * Les trois niveaux arrivent ensemble et chaque ligne porte ses parents : le
+ * formulaire peut donc remonter (sous-famille -> famille -> categorie) autant
+ * que descendre, et chercher dans les 704 sous-familles sans en avoir d abord
+ * choisi la famille.
+ */
+export interface CatalogueComplet {
+  categories: Array<{ id: number; libelle: string }>;
+  familles: Array<{ id: number; libelle: string; id_categorie: number }>;
+  sous_familles: Array<{
+    id: number; libelle: string; id_famille: number; id_categorie: number;
+  }>;
+}
