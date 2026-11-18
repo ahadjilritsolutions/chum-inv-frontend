@@ -49,3 +49,17 @@ export const traiterReforme = (body: {
 /** La fiche de transfert d'un document — celle que le service signe et classe. */
 export const getFicheTransfert = (id: number): Promise<FicheTransfertResponse> =>
   apiGet(`/api/mouvements/document/${id}`);
+
+/**
+ * Annuler une fiche de transfert — et DEFAIRE le deplacement.
+ *
+ * Les biens reviennent la ou ils etaient, et un mouvement inverse est ecrit a
+ * cote de l original. Le serveur REFUSE si un bien a bouge depuis : le ramener
+ * l arracherait a un endroit ou il est legitimement.
+ */
+export const annulerFiche = (id: number, motif?: string): Promise<{ ok: true; articles: number }> =>
+  apiPost(`/api/mouvements/document/${id}/annuler`, { motif });
+
+/** Refaire le deplacement qu une annulation avait defait. */
+export const desannulerFiche = (id: number): Promise<{ ok: true; articles: number }> =>
+  apiPost(`/api/mouvements/document/${id}/desannuler`, {});

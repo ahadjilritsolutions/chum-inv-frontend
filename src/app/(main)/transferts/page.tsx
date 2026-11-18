@@ -1,18 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeftRight, ArrowRight, Printer } from "lucide-react";
+import { ArrowLeftRight, ArrowRight, Ban, Printer, Undo2 } from "lucide-react";
 import PageHero from "@/components/ui/PageHero";
 import ListToolbar from "@/components/ui/ListToolbar";
 import DataTable, { Td } from "@/components/ui/DataTable";
 import IconAction from "@/components/ui/IconAction";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import FicheTransfertPrint from "@/components/modules/mouvements/FicheTransfertPrint";
 import { Banner, Select } from "@/components/ui/Form";
 import AccessPending from "@/components/ui/AccessPending";
 import { useRequireAccess } from "@/lib/auth/useRequireAccess";
 import { useAccess } from "@/lib/auth/AccessProvider";
 import { ACCESS } from "@/lib/access";
-import { listMouvements } from "@/services/inv/mouvements";
+import {
+  annulerFiche, desannulerFiche, listMouvements,
+} from "@/services/inv/mouvements";
 import { getFamilles, getReference, getSousFamilles } from "@/services/inv/reference";
 import { formatDate } from "@/components/modules/articles/ArticleDetailModal";
 import type { MouvementRow } from "@/types/inv/mouvement";
@@ -34,6 +37,9 @@ export default function TransfertsPage() {
   const { allowed, loading: gating } = useRequireAccess(ACCESS.MOUVEMENTS_VOIR);
   const { can } = useAccess();
   const peutImprimer = can(ACCESS.TRANSFERT_FICHE_IMPRIMER);
+  // Annuler DÉFAIT le déplacement : c'est le pouvoir de décider du sort d'une
+  // fiche, le même que la valider — pas celui de l'agent qui la rédige.
+  const peutAnnuler = can(ACCESS.TRANSFERT_FICHE_VALIDER);
 
   const [lignes, setLignes] = useState<MouvementRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -54,6 +60,10 @@ export default function TransfertsPage() {
   /** La fiche demandee a l'impression, et son signal « peinte ». */
   const [fiche, setFiche] = useState<number | null>(null);
   const [fichePrete, setFichePrete] = useState(false);
+  /** La fiche dont on vient de demander l'annulation (ou sa réactivation). */
+  const [aBasculer, setABasculer] = useState<MouvementRow | null>(null);
+  const [occupe, setOccupe] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
 
   useEffect(() => {
     void getReference().then(setRef).catch(() => setRef(null));
@@ -107,6 +117,35 @@ export default function TransfertsPage() {
   const filtrer = (fn: () => void) => { fn(); setPage(1); };
 
   /**
+   * Annuler, ou refaire. Le serveur REFUSE si un bien a bougé depuis la
+   * fiche — son message nomme alors les articles concernés, et c'est lui
+   * qu'on affiche : « 3 articles ont bougé depuis cette fiche » est une
+   * réponse, « échec de l'opération » n'en est pas une.
+   */
+  async function basculer(m: MouvementRow, motif: string) {
+    if (!m.id_document) return;
+    setOccupe(true); setErreur(null); setInfo(null);
+    try {
+      const annulee = m.doc_statut === "annule";
+      const r = annulee
+        ? await desannulerFiche(m.id_document)
+        : await annulerFiche(m.id_document, motif);
+      setInfo(
+        annulee
+          ? `Fiche ${m.num_document ?? ""} réactivée — ${r.articles} article(s) renvoyé(s) à destination.`
+          : `Fiche ${m.num_document ?? ""} annulée — ${r.articles} article(s) ramené(s) à leur local d'origine.`,
+      );
+      setABasculer(null);
+      await charger();
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : "Opération impossible.");
+      setABasculer(null);
+    } finally {
+      setOccupe(false);
+    }
+  }
+
+  /**
    * On n'imprime QU'APRES que la fiche a ete peinte.
    *
    * Dans le meme tick, window.print() sortirait une feuille blanche. Les 80 ms
@@ -134,6 +173,7 @@ export default function TransfertsPage() {
       />
 
       {erreur && <Banner type="error">{erreur}</Banner>}
+      {info && <Banner type="ok">{info}</Banner>}
 
       <ListToolbar
         recherche={recherche}
@@ -216,14 +256,15 @@ export default function TransfertsPage() {
 
       <DataTable
         colonnes={[
+          // La fiche OUVRE la ligne : c'est le numéro porté par le papier
+          // classé, et donc l'entrée dans la liste quand on arrive avec une
+          // fiche à la main — le cas le plus fréquent.
+          { titre: "Fiche" },
           { titre: "Date" },
           { titre: "N° inventaire" },
           { titre: "Désignation" },
           { titre: "De → Vers" },
           { titre: "Motif" },
-          // La fiche ferme la ligne : c'est ce qu'on va CHERCHER une fois
-          // qu'on a reconnu le mouvement, donc apres l'avoir lu, pas avant.
-          { titre: "Fiche" },
         ]}
         lignes={lignes}
         cle={(m) => m.id_mouvement}
@@ -236,6 +277,66 @@ export default function TransfertsPage() {
         rendu={(m) => {
           return (
             <>
+              <Td>
+                {/* Le numero ET le bouton : le numero est ce qui figure sur le
+                    papier classe, le bouton est ce qui en ressort un autre
+                    exemplaire. Un transfert peut avoir ete fait sans fiche
+                    (avec_document est facultatif) — on le dit plutot que de
+                    proposer d'imprimer un document qui n'existe pas. */}
+                {m.id_document ? (
+                  <span className="flex items-center gap-2 whitespace-nowrap">
+                    <span
+                      className={
+                        "font-mono text-[12px] " +
+                        (m.doc_statut === "annule"
+                          ? "text-slate-400 line-through"
+                          : "text-slate-500")
+                      }
+                    >
+                      {m.num_document ?? "—"}
+                    </span>
+
+                    {/* Une fiche annulée le DIT. Barrer le numéro ne suffit
+                        pas : sur une ligne de tableau, une rature se lit comme
+                        un défaut d'affichage. */}
+                    {m.doc_statut === "annule" && (
+                      <span className="rounded bg-red-50 px-1.5 py-px text-[10px] font-bold text-red-700">
+                        ANNULÉE
+                      </span>
+                    )}
+
+                    {peutImprimer && (
+                      <IconAction
+                        title={"Imprimer la fiche " + (m.num_document ?? "")}
+                        tone="print"
+                        onClick={() => {
+                          setFichePrete(false);
+                          setFiche(m.id_document);
+                        }}
+                      >
+                        <Printer size={14} />
+                      </IconAction>
+                    )}
+
+                    {peutAnnuler && (
+                      <IconAction
+                        title={
+                          m.doc_statut === "annule"
+                            ? "Réactiver la fiche — les biens repartent à destination"
+                            : "Annuler la fiche — les biens reviennent à leur local d'origine"
+                        }
+                        tone={m.doc_statut === "annule" ? "edit" : "danger"}
+                        disabled={occupe}
+                        onClick={() => setABasculer(m)}
+                      >
+                        {m.doc_statut === "annule" ? <Undo2 size={14} /> : <Ban size={14} />}
+                      </IconAction>
+                    )}
+                  </span>
+                ) : (
+                  <span className="text-[12px] italic text-slate-400">sans fiche</span>
+                )}
+              </Td>
               <Td className="whitespace-nowrap text-slate-600">
                 {formatDate(m.date_mouvement)}
               </Td>
@@ -263,37 +364,54 @@ export default function TransfertsPage() {
               <Td className="max-w-[220px] truncate text-[12.5px] text-slate-500">
                 {m.commentaire ?? "—"}
               </Td>
-              <Td>
-                {/* Le numero ET le bouton : le numero est ce qui figure sur le
-                    papier classe, le bouton est ce qui en ressort un autre
-                    exemplaire. Un transfert peut avoir ete fait sans fiche
-                    (avec_document est facultatif) — on le dit plutot que de
-                    proposer d'imprimer un document qui n'existe pas. */}
-                {m.id_document ? (
-                  <span className="flex items-center gap-2 whitespace-nowrap">
-                    <span className="font-mono text-[12px] text-slate-500">
-                      {m.num_document ?? "—"}
-                    </span>
-                    {peutImprimer && (
-                      <IconAction
-                        title={"Imprimer la fiche " + (m.num_document ?? "")}
-                        tone="print"
-                        onClick={() => {
-                          setFichePrete(false);
-                          setFiche(m.id_document);
-                        }}
-                      >
-                        <Printer size={14} />
-                      </IconAction>
-                    )}
-                  </span>
-                ) : (
-                  <span className="text-[12px] italic text-slate-400">sans fiche</span>
-                )}
-              </Td>
             </>
           );
         }}
+      />
+
+      <ConfirmModal
+        open={aBasculer !== null}
+        titre={
+          aBasculer?.doc_statut === "annule"
+            ? "Réactiver la fiche"
+            : "Annuler la fiche de transfert"
+        }
+        ton={aBasculer?.doc_statut === "annule" ? "normal" : "danger"}
+        confirmer={aBasculer?.doc_statut === "annule" ? "Réactiver" : "Annuler la fiche"}
+        occupe={occupe}
+        motif={aBasculer?.doc_statut === "annule" ? "aucun" : "facultatif"}
+        labelMotif="Pourquoi cette annulation ?"
+        message={
+          aBasculer?.doc_statut === "annule" ? (
+            <>
+              Les biens de cette fiche <b>repartent à leur destination</b>, et un
+              mouvement est écrit au journal. L&apos;annulation précédente reste
+              visible : rien n&apos;est effacé.
+            </>
+          ) : (
+            <>
+              Les biens de cette fiche <b>reviennent à leur local d&apos;origine</b>.
+              Le mouvement initial reste au journal et un mouvement inverse est
+              écrit à côté — on lit donc toute l&apos;histoire. Un bien qui a
+              bougé depuis ne sera pas déplacé : l&apos;opération est alors
+              refusée en le nommant.
+            </>
+          )
+        }
+        detail={
+          aBasculer && (
+            <>
+              <span className="font-mono text-[12px] text-slate-500">
+                {aBasculer.num_document}
+              </span>
+              <p className="font-medium text-slate-800">
+                {aBasculer.num_inventaire} — {aBasculer.designation}
+              </p>
+            </>
+          )
+        }
+        onFermer={() => setABasculer(null)}
+        onConfirmer={(motif) => { if (aBasculer) void basculer(aBasculer, motif); }}
       />
 
       {/* Gare hors champ plutot qu'en display:none — un element masque n'a pas

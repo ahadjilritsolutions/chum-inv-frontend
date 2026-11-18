@@ -510,3 +510,101 @@ body {
     page-break-after: auto;
   }
 }
+
+/* ── LE CARNET D INVENTAIRE ────────────────────────────────────────────────
+   Geometrie reprise de sortie/rcah.php : A4 portrait, marge 12 mm, Times.
+   Les services le classent dans un carnet relie depuis des annees ; la mise
+   en page n est pas une preference, c est ce que le responsable signe. */
+.carnet {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 12mm;
+  margin: 0 auto;
+  background: #fff;
+  color: #000;
+  font-family: "Times New Roman", Times, serif;
+  box-sizing: border-box;
+}
+
+.carnet-entete {
+  text-align: center;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.carnet-entete p { margin: 0; }
+
+.carnet-titre {
+  margin: 10mm 0 0;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* « 11/2026 », a gauche sous le titre, comme sur le carnet papier. */
+.carnet-periode {
+  margin: 6mm 0 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.carnet-service {
+  margin: 1mm 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* Un bloc par bureau. Il ne se coupe pas entre deux pages si on peut l eviter :
+   un en-tete de bureau orphelin en bas de page se lit comme un bureau vide. */
+.carnet-bloc {
+  margin-top: 6mm;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.carnet-bureau {
+  border: 1px solid #000;
+  background: #dddddd;
+  text-align: center;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 1.5mm 0;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.carnet-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9px;
+}
+
+.carnet-table th {
+  border: 1px solid #000;
+  padding: 1.2mm 1mm;
+  font-weight: 700;
+  font-size: 10px;
+}
+
+.carnet-table td {
+  border: 1px solid #000;
+  padding: 1mm;
+  height: 5mm;
+  /* Le bleu du carnet papier : c est ainsi que les services le relisent. */
+  color: #00008b;
+  font-weight: 700;
+}
+
+.carnet-signature {
+  margin-top: 10mm;
+  text-align: right;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+@media print {
+  /* Le carnet EST la page : il porte sa propre marge, @page n en ajoute pas. */
+  .carnet { margin: 0; padding: 12mm; min-height: auto; }
+}

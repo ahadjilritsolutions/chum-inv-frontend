@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import {
   ArrowLeftRight, BookMarked, Boxes, Eye, Layers, PackageX, Pencil, Printer,
   Recycle, ScanLine, Trash2,
@@ -62,6 +63,7 @@ export default function ArticlesPage() {
   const [sousFamille, setSousFamille] = useState("");
   const [service, setService] = useState("");
   const [registre, setRegistre] = useState("");
+  const [observation, setObservation] = useState("");
   const [supprimes, setSupprimes] = useState("sans");
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -144,6 +146,7 @@ export default function ArticlesPage() {
         sous_famille: sousFamille ? Number(sousFamille) : undefined,
         service: service ? Number(service) : undefined,
         registre: (registre || undefined) as "oui" | "non" | undefined,
+        observation: observation || undefined,
         supprimes: supprimes as "sans" | "seuls" | "tous",
         page,
         limit: TAILLE,
@@ -156,7 +159,7 @@ export default function ArticlesPage() {
     } finally {
       setChargement(false);
     }
-  }, [recherche, statut, etat, categorie, famille, sousFamille, service, registre, supprimes, page]);
+  }, [recherche, statut, etat, categorie, famille, sousFamille, service, registre, observation, supprimes, page]);
 
   useEffect(() => { void charger(); }, [charger]);
 
@@ -235,6 +238,18 @@ export default function ArticlesPage() {
                 <ScanLine size={15} />
                 Scanner
               </button>
+            )}
+            {/* La corbeille a son ecran : on y restaure, et surtout on y
+                reemploie un numero. Le filtre « Supprimes » de cette barre
+                les montrait sans permettre d en faire quoi que ce soit. */}
+            {can(ACCESS.ARTICLES_VOIR_SUPPRIMES) && (
+              <Link
+                href="/articles/supprimes"
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-[12.5px] font-semibold text-slate-600 no-underline transition-colors hover:border-slate-400 hover:bg-slate-50 sm:flex-none sm:shrink-0"
+              >
+                <PackageX size={15} />
+                Supprimés
+              </Link>
             )}
             {can(ACCESS.ARTICLES_CREER_GROUPE) && (
               <button
@@ -323,6 +338,21 @@ export default function ArticlesPage() {
               <option value="">Toutes voies</option>
               <option value="oui">Registre</option>
               <option value="non">Physique</option>
+            </Select>
+            {/* « Les biens reçus en DON » est une question qu'on pose pour de
+                vrai. Le legacy écrivait le mot en tête d'un texte libre, donc
+                personne ne pouvait y répondre autrement qu'à l'œil. */}
+            <Select
+              value={observation}
+              onChange={(e) => filtrer(() => setObservation(e.target.value))}
+              className="w-auto min-w-[160px]"
+            >
+              <option value="">Toutes observations</option>
+              <option value="don">DON</option>
+              <option value="personnel">PERSONNEL</option>
+              <option value="non_disponible">NON-DISPONIBLE</option>
+              <option value="autre">AUTRE</option>
+              <option value="aucune">Sans observation</option>
             </Select>
             {can(ACCESS.ARTICLES_VOIR_SUPPRIMES) && (
               <Select

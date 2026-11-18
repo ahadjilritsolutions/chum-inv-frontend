@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  ArrowLeftRight, BarChart3, Boxes, Home, Power, Printer, Recycle, Settings,
+  ArrowLeftRight, BarChart3, Boxes, Home, PackageX, Power, Printer, Recycle, Settings,
   HelpCircle, type LucideIcon,
 } from "lucide-react";
 import { ACCESS, type AccessCode } from "@/lib/access";
@@ -63,6 +63,12 @@ const palette = {
 export const navItems: readonly NavItem[] = [
   { label: "Accueil", href: "/dashboard", icon: Home, ...palette.white, access: ACCESS.DASHBOARD_VOIR },
   { label: "Articles", href: "/articles", icon: Boxes, ...palette.green, access: ACCESS.ARTICLES_VOIR },
+  // La corbeille a sa place dans la barre : on n'y va pas depuis le registre,
+  // on y va parce qu'on cherche un numéro à réemployer.
+  {
+    label: "Articles supprimés", href: "/articles/supprimes", icon: PackageX,
+    ...palette.slate, access: ACCESS.ARTICLES_VOIR_SUPPRIMES,
+  },
   { label: "Transferts", href: "/transferts", icon: ArrowLeftRight, ...palette.purple, access: ACCESS.MOUVEMENTS_VOIR },
   { label: "Réformes", href: "/reformes", icon: Recycle, ...palette.red, access: ACCESS.REFORME_VOIR },
   // Gardée par config.roles.voir et non par config.voir : l'entrée ne doit

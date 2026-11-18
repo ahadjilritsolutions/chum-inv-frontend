@@ -129,9 +129,18 @@ export default function FicheArticlePrint({
       <Ligne k="Document de réception" v={detail.num_doc_reception} />
       <Ligne k="Valeur" v={formatValeur(detail.valeur)} />
     </Grille>
-    {detail.observation && (
+    {/* L'OBSERVATION EST UN TYPE, puis un texte seulement pour « AUTRE ».
+        Le legacy écrivait le mot en tête du texte libre ; la fiche affichait
+        donc « DON » sans que rien ne dise que c'était une catégorie. Les deux
+        sont désormais distincts, et le type sort même sans précision. */}
+    {(detail.type_observation || detail.observation) && (
       <p className="mt-2 text-[11px]">
-        <b>Observation :</b> {detail.observation}
+        <b>Observation :</b>{" "}
+        {detail.type_observation
+          ? LIB_OBSERVATION[detail.type_observation] ?? detail.type_observation
+          : ""}
+        {detail.type_observation && detail.observation ? " — " : ""}
+        {detail.observation ?? ""}
       </p>
     )}
   </Bloc>
@@ -283,3 +292,11 @@ function formatDate(d: string | null | undefined): string {
   const [a, m, j] = s.split("-");
   return a && m && j ? `${j}/${m}/${a}` : s;
 }
+
+/** Les quatre valeurs du formulaire legacy, telles qu'il les écrivait. */
+const LIB_OBSERVATION: Record<string, string> = {
+  don: "DON",
+  personnel: "PERSONNEL",
+  non_disponible: "NON-DISPONIBLE",
+  autre: "AUTRE",
+};

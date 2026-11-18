@@ -5,7 +5,7 @@ import { BookMarked, Loader2, PackagePlus, Save, Wand2 } from "lucide-react";
 import { useAccess } from "@/lib/auth/AccessProvider";
 import { ACCESS } from "@/lib/access";
 import {
-  creerArticle, creerGroupe, getArticle, modifierArticle,
+  creerArticle, creerGroupe, getArticle, modifierArticle, restaurerArticle,
 } from "@/services/inv/articles";
 import { getCatalogue, getLocalisations } from "@/services/inv/reference";
 import SearchSelect from "@/components/ui/SearchSelect";
@@ -66,7 +66,7 @@ import type {
 export default function ArticleFormModal({
   mode, id, ref: reference, onClose, onSaved,
 }: {
-  mode: "creer" | "modifier" | "groupe" | null;
+  mode: "creer" | "modifier" | "groupe" | "restaurer" | null;
   id?: number | null;
   ref: ReferenceFeed | null;
   onClose: () => void;
@@ -94,7 +94,7 @@ export default function ArticleFormModal({
     setErreur(null); setBusy(false); setNombre(2); setVoie("physique");
     void getLocalisations().then(setLocs).catch(() => setLocs([]));
     void getCatalogue().then(setCat).catch(() => setCat(null));
-    if (mode === "modifier" && id) {
+    if ((mode === "modifier" || mode === "restaurer") && id) {
       setChargement(true);
       getArticle(id)
         .then((a) => {
@@ -106,11 +106,11 @@ export default function ArticleFormModal({
             marque: a.marque, modele: a.modele, num_serie: a.num_serie,
             valeur: a.valeur, date_inventaire: a.date_inventaire,
             date_mise_service: a.date_mise_service, num_facture: a.num_facture,
-            // type_observation n'a plus de champ : ses quatre valeurs (don,
-            // personnel, non disponible, autre) ne voulaient rien dire pour un
-            // bien d'inventaire. Il reste TRANSPORTE tel quel pour ne pas
-            // effacer, a la premiere modification, ce que le legacy avait pu y
-            // mettre sur 2 932 articles.
+            date_facture: a.date_facture,
+            fournisseur_texte_legacy: a.fournisseur_texte_legacy,
+            fabricant_texte_legacy: a.fabricant_texte_legacy,
+            id_type_doc_reception: a.id_type_doc_reception,
+            num_doc_reception: a.num_doc_reception,
             type_observation: a.type_observation, observation: a.observation,
           });
         })
@@ -237,6 +237,7 @@ export default function ArticleFormModal({
   }, [voie, codeService]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const titre = useMemo(() => {
+    if (mode === "restaurer") return "Restaurer et réaffecter le numéro";
     if (mode === "modifier") return "Modifier l'article";
     if (mode === "groupe") return "Nouveau groupe d'articles";
     return "Nouvel article";
@@ -259,7 +260,14 @@ export default function ArticleFormModal({
         if (voie !== "registre") delete body.num_inventaire;
       }
 
-      if (mode === "modifier" && id) {
+      if (mode === "restaurer" && id) {
+        const r = await restaurerArticle(id, body);
+        onSaved(
+          r.modifie > 0
+            ? `Article restauré et ${r.modifie} champ${r.modifie > 1 ? "s" : ""} réécrit${r.modifie > 1 ? "s" : ""}.`
+            : "Article restauré.",
+        );
+      } else if (mode === "modifier" && id) {
         const r = await modifierArticle(id, body);
         onSaved(
           r.modifie === 0
@@ -312,7 +320,9 @@ export default function ArticleFormModal({
           <div className="min-w-0">
             <h2 className="text-[15px] font-semibold">{titre}</h2>
             <p className="text-[11.5px] text-white/70">
-              {mode === "modifier"
+              {mode === "restaurer"
+                ? "Le numéro est conservé — corrigez ce que le nouveau bien change"
+                : mode === "modifier"
                 ? "Chaque champ modifié est enregistré dans l'historique"
                 : voie === "registre"
                   ? "Le numéro est transcrit depuis le registre officiel"
@@ -337,7 +347,7 @@ export default function ArticleFormModal({
               Placée en tête et non parmi les champs : elle ne décrit pas le
               bien, elle décide de la façon dont il entre au registre, et cela
               change le formulaire en dessous. */}
-          {!chargement && mode !== "modifier" && peutRegistre && (
+          {!chargement && mode !== "modifier" && mode !== "restaurer" && peutRegistre && (
             <div className="mb-4 grid gap-2 sm:grid-cols-2">
               <VoieBouton
                 actif={voie === "physique"}
@@ -364,7 +374,7 @@ export default function ArticleFormModal({
                   du bas le renvoi libre vers l'ancien cahier papier. Le legacy
                   les tenait tous deux dans `num_art` / `num_art_r` sans
                   jamais le dire nulle part à l'écran. */}
-              {mode !== "modifier" && (
+              {mode !== "modifier" && mode !== "restaurer" && (
                 <>
                   <Champ label="N° d'inventaire" obligatoire={voie === "registre"}>
                     <input
@@ -546,10 +556,107 @@ export default function ArticleFormModal({
                 />
               </Champ>
 
+              <Champ label="N° de facture">
+                <input
+                  value={String(f.num_facture ?? "")}
+                  onChange={(e) => set("num_facture", e.target.value)}
+                  className={input}
+                />
+              </Champ>
+              <Champ label="Date de facture">
+                <input
+                  type="date"
+                  value={String(f.date_facture ?? "").slice(0, 10)}
+                  onChange={(e) => set("date_facture", e.target.value)}
+                  className={input}
+                />
+              </Champ>
+
+              {/* ── LES TIERS — DU TEXTE LIBRE, comme dans le legacy ──────
+                  `nmob.php` posait deux <input type="text"> : on tape le nom
+                  du fournisseur, on ne le choisit pas dans un annuaire. En
+                  faire des listes obligeait à créer la fiche d'un tiers avant
+                  de pouvoir enregistrer un bien — un obstacle que l'ancienne
+                  application n'avait pas, pour un gain que personne n'a
+                  demandé. */}
+              <Champ label="Fournisseur">
+                <input
+                  value={String(f.fournisseur_texte_legacy ?? "")}
+                  onChange={(e) => set("fournisseur_texte_legacy", e.target.value)}
+                  className={input}
+                />
+              </Champ>
+              <Champ label="Fabricant">
+                <input
+                  value={String(f.fabricant_texte_legacy ?? "")}
+                  onChange={(e) => set("fabricant_texte_legacy", e.target.value)}
+                  className={input}
+                />
+              </Champ>
+
+              {/* ── LE DOCUMENT DE RÉCEPTION ─────────────────────────────
+                  Le legacy empaquetait les deux dans une seule colonne
+                  (« PV-RECEPTION : 123 »), ce qui rendait impossible de
+                  chercher tous les biens reçus sur PV. Deux champs. */}
+              <Champ label="Document de réception">
+                <select
+                  value={String(f.id_type_doc_reception ?? "")}
+                  onChange={(e) => set("id_type_doc_reception", Number(e.target.value) || null)}
+                  className={input}
+                >
+                  <option value="">AUCUN</option>
+                  {(reference?.types_document_reception ?? []).map((d) => (
+                    <option key={d.id} value={d.id}>{d.libelle}</option>
+                  ))}
+                </select>
+              </Champ>
+              <Champ label="N° du document">
+                <input
+                  value={String(f.num_doc_reception ?? "")}
+                  onChange={(e) => set("num_doc_reception", e.target.value)}
+                  disabled={!f.id_type_doc_reception}
+                  placeholder={f.id_type_doc_reception ? "" : "choisir un document d'abord"}
+                  className={input}
+                />
+              </Champ>
+
+              {/* ── L'OBSERVATION — UN CHOIX, PUIS DU TEXTE SI « AUTRE » ──
+                  Repris tel quel du formulaire legacy (nmob.php) : quatre
+                  valeurs, et le texte libre n'est ouvert QUE pour « AUTRE ».
+                  C'est ce qui rend l'observation filtrable : « les biens en
+                  DON » est une question qu'on pose, et du texte libre n'y
+                  répond pas — au CHU Mustapha les 18 lignes renseignées
+                  portaient toutes « DON ». */}
               <Champ label="Observation">
+                <select
+                  value={String(f.type_observation ?? "")}
+                  onChange={(e) => {
+                    const v = e.target.value || null;
+                    set("type_observation", v);
+                    // Le texte n'appartient qu'à « autre » : le garder en
+                    // changeant de type laisserait un commentaire orphelin
+                    // sous une étiquette qui ne le décrit plus.
+                    if (v !== "autre") set("observation", "");
+                  }}
+                  className={input}
+                >
+                  <option value="">—</option>
+                  <option value="don">DON</option>
+                  <option value="personnel">PERSONNEL</option>
+                  <option value="non_disponible">NON-DISPONIBLE</option>
+                  <option value="autre">AUTRE</option>
+                </select>
+              </Champ>
+              <Champ label="Précision">
                 <input
                   value={String(f.observation ?? "")}
                   onChange={(e) => set("observation", e.target.value)}
+                  disabled={f.type_observation !== "autre"}
+                  placeholder={
+                    f.type_observation === "autre"
+                      ? "texte libre"
+                      : "réservé à « AUTRE »"
+                  }
                   className={input}
                 />
               </Champ>

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ClipboardCheck, FileText, Loader2, Printer, QrCode, Tag,
+  BookMarked, ClipboardCheck, FileText, Loader2, Printer, QrCode, Tag,
 } from "lucide-react";
 import PageHero from "@/components/ui/PageHero";
 import ViewTabs, { type ViewTab } from "@/components/ui/ViewTabs";
@@ -10,6 +10,7 @@ import { Banner, Field, Select } from "@/components/ui/Form";
 import AccessPending from "@/components/ui/AccessPending";
 import FeuilleImpression from "@/components/ui/FeuilleImpression";
 import PlancheEtiquettes from "@/components/modules/impression/PlancheEtiquettes";
+import CarnetInventaire from "@/components/modules/impression/CarnetInventaire";
 import { useRequireAccess } from "@/lib/auth/useRequireAccess";
 import { useAccess } from "@/lib/auth/AccessProvider";
 import { ACCESS } from "@/lib/access";
@@ -21,7 +22,7 @@ import {
 } from "@/services/inv/reference";
 import type { LocalisationOption, Lookup, ReferenceFeed } from "@/types/inv/reference";
 
-type Doc = "fiche" | "inventaire" | "etiquettes";
+type Doc = "fiche" | "carnet" | "inventaire" | "etiquettes";
 
 /**
  * Combien d'étiquettes on accepte de composer d'un coup.
@@ -159,7 +160,14 @@ export default function ImpressionPage() {
     setChargement(true); setErreur(null);
     try {
       if (doc === "etiquettes") {
-        const d = await getEtiquettes(filtres);
+        // ⚠ JAMAIS de reforme ni de sorti sur une etiquette.
+        //
+        // Le reglage « Inclure reformes et sortis » appartient a l inventaire
+        // detaille, mais son etat est PARTAGE entre les onglets : coche la,
+        // puis venu ici, il aurait fait imprimer des etiquettes pour des biens
+        // sortis du parc — sans case a cocher visible pour expliquer pourquoi.
+        // On force donc la valeur, au lieu de se fier a un etat d ecran.
+        const d = await getEtiquettes({ ...filtres, inclure_sortis: false });
         setEtiquettes(d.etiquettes);
         // Tout est coché en arrivant : on vient d'exprimer un périmètre, et
         // c'est celui-là qu'on veut. Décocher trois exceptions est plus rapide
@@ -173,7 +181,11 @@ export default function ImpressionPage() {
           // et n'est jamais ventilée : elle porte sur un seul local.
           ...(doc === "fiche"
             ? { statut: "en_service", inclure_sortis: false, groupe: "aucun" as const }
-            : { groupe: ventile ? ("localisation" as const) : ("aucun" as const) }),
+            : doc === "carnet"
+              // Le carnet est TOUJOURS ventilé par bureau, et ne montre jamais
+              // ce qui est sorti du parc : c'est un registre, pas un historique.
+              ? { inclure_sortis: false, groupe: "localisation" as const }
+              : { groupe: ventile ? ("localisation" as const) : ("aucun" as const) }),
         });
         setGroupes(d.groupes);
         setTotal(d.total);
@@ -212,6 +224,7 @@ export default function ImpressionPage() {
 
   const onglets: ReadonlyArray<ViewTab<Doc>> = [
     { id: "fiche", label: "Fiche d'inventaire", icon: ClipboardCheck },
+    { id: "carnet", label: "Carnet d'inventaire", icon: BookMarked },
     { id: "inventaire", label: "Inventaire détaillé", icon: FileText },
     ...(can(ACCESS.IMPRESSION_ETIQUETTES_LOT)
       ? [{ id: "etiquettes" as const, label: "Étiquettes QR", icon: QrCode }]
@@ -230,7 +243,9 @@ export default function ImpressionPage() {
   const localManquant =
     doc === "fiche" && !localisation
       ? "Choisissez une localisation : une fiche de récolement se fait pièce par pièce."
-      : null;
+      : doc === "carnet" && !service
+        ? "Choisissez un service : le carnet est le registre d'un service, bureau par bureau."
+        : null;
 
   const nomService =
     ref?.services.find((s) => s.id_service === Number(service))?.lib_service ?? null;
@@ -279,7 +294,11 @@ export default function ImpressionPage() {
 
           <Field
             label="Localisation"
-            hint={doc === "fiche" ? "Obligatoire pour une fiche" : "Vide = tout le service"}
+            hint={
+              doc === "fiche" ? "Obligatoire pour une fiche"
+              : doc === "carnet" ? "Ignorée — le carnet couvre tout le service"
+              : "Vide = tout le service"
+            }
           >
             <Select value={localisation} onChange={(e) => setLocalisation(e.target.value)}>
               <option value="">
@@ -532,7 +551,16 @@ export default function ImpressionPage() {
       {doc !== "etiquettes" && groupes !== null && (
         <div className="overflow-x-auto rounded-2xl bg-slate-200 p-4">
           <div id="print-ticket">
-            {doc === "fiche" ? (
+            {doc === "carnet" ? (
+              <CarnetInventaire
+                groupes={groupes}
+                locaux={locsDuService}
+                service={nomService}
+                periode={new Intl.DateTimeFormat("fr-FR", {
+                  month: "2-digit", year: "numeric",
+                }).format(new Date())}
+              />
+            ) : doc === "fiche" ? (
               <FeuilleImpression
                 titre="FICHE D'INVENTAIRE"
                 numero={nomLoc ?? "—"}
@@ -542,17 +570,17 @@ export default function ImpressionPage() {
                 localisation={nomLoc}
                 signatures={["Le responsable du local", "Le bureau d'inventaire"]}
               >
-                {/* QUATRE colonnes et une case. Le n° de série, la valeur et les
-                    totaux ne se vérifient pas à l'œil devant une armoire : ils
-                    allongeaient la feuille sans aider à cocher. */}
+                {/* DEUX colonnes imprimées, et une TROISIÈME laissée vide.
+                    La marque et l'état ont été retirés : devant une armoire, on
+                    vérifie un numéro et une désignation, et ce qu'on a à dire
+                    s'écrit au stylo. Les imprimer revenait à proposer une
+                    réponse là où on vient justement en chercher une. */}
                 <table className="bon-table">
                   <thead>
                     <tr>
-                      <th style={{ width: "20%" }}>N° inventaire</th>
-                      <th>Désignation</th>
-                      <th style={{ width: "20%" }}>Marque</th>
-                      <th style={{ width: "15%" }}>État</th>
-                      <th style={{ width: "8%" }}>Vu</th>
+                      <th style={{ width: "22%" }}>N° inventaire</th>
+                      <th style={{ width: "43%" }}>Désignation</th>
+                      <th>Observation</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -560,15 +588,15 @@ export default function ImpressionPage() {
                       <tr key={l.id_article}>
                         <td style={{ fontFamily: "monospace" }}>{l.num_inventaire}</td>
                         <td>{l.designation}</td>
-                        <td>{l.marque ?? "—"}</td>
-                        <td>{l.etat ?? "—"}</td>
-                        <td style={{ textAlign: "center" }}>☐</td>
+                        {/* Laissée vide EXPRÈS : c'est la colonne du stylo.
+                            une hauteur pour qu'il y ait de quoi écrire. */}
+                        <td style={{ height: "7mm" }} />
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
                     <tr>
-                      <td colSpan={5} style={{ fontWeight: 700 }}>
+                      <td colSpan={3} style={{ fontWeight: 700 }}>
                         {total} article{total > 1 ? "s" : ""} en service dans ce local
                       </td>
                     </tr>

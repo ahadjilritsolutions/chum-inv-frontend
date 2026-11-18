@@ -66,5 +66,16 @@ export const confirmerPresenceParNumero = (
 export const supprimerArticle = (id: number, motif: string): Promise<{ ok: true }> =>
   apiDelete(`/api/articles/${id}?motif=${encodeURIComponent(motif)}`);
 
-export const restaurerArticle = (id: number): Promise<{ ok: true }> =>
-  apiPost(`/api/articles/${id}/restaurer`, {});
+/**
+ * Restaurer un article supprime, en reecrivant au passage ses informations.
+ *
+ * On restaure pour REEMPLOYER UN NUMERO : le bien d origine est parti,
+ * l etiquette est encore bonne, un autre bien prend sa place. Les champs
+ * passes sont appliques dans la MEME transaction que la restauration — sinon,
+ * entre les deux, le registre afficherait un bien qui n existe pas.
+ */
+export const restaurerArticle = (
+  id: number,
+  champs?: Record<string, unknown>,
+): Promise<{ ok: true; modifie: number }> =>
+  apiPost(`/api/articles/${id}/restaurer`, champs ?? {});

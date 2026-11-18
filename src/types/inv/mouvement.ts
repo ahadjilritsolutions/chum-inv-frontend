@@ -18,6 +18,8 @@ export interface MouvementRow {
   service_apres: number | null;
   id_document: number | null;
   num_document: string | null;
+  /** 'brouillon' | 'valide' | 'annule' — null quand il n'y a pas de fiche. */
+  doc_statut: string | null;
 }
 
 export interface MouvementListResponse {

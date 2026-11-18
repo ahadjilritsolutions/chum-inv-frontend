@@ -19,10 +19,13 @@ export interface ArticleRow {
   presence: string | null;
   marque: string | null;
   modele: string | null;
+  type_observation: string | null;
   num_serie: string | null;
   valeur: string;
   date_inventaire: string | null;
   supprime: number;
+  date_suppression: string | null;
+  motif_suppression: string | null;
   /**
    * Par quelle VOIE le numéro a été attribué — le `mobilier.id_reg` du legacy.
    *
@@ -160,6 +163,8 @@ export interface ArticleQuery {
   service?: number;
   /** 'oui' = seulement le registre, 'non' = seulement le physique. */
   registre?: "oui" | "non";
+  /** don | personnel | non_disponible | autre | aucune */
+  observation?: string;
   supprimes?: "sans" | "seuls" | "tous";
   page?: number;
   limit?: number;
